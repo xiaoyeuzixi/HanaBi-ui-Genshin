@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{B7C4E2A1-3F5D-4A8E-9C21-6D8F0B1E4A73}</ProjectGuid>
+    <RootNamespace>HanaBi</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <PropertyGroup Label="UserMacros" />
+
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)bin\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(ProjectName)\</IntDir>
+    <TargetName>hanabi</TargetName>
+    <LinkIncremental>false</LinkIncremental>
+    <ProjectDirAssetsSlash>$([System.String]::Copy('$(ProjectDir)assets').Replace('\','/'))</ProjectDirAssetsSlash>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <Link>
+      <ProgramDatabaseFile>$(IntDir)$(TargetName).pdb</ProgramDatabaseFile>
+      <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
+    </Link>
+    <ResourceCompile>
+
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;UNICODE;_UNICODE;NOMINMAX;WIN32_LEAN_AND_MEAN;HB_ASSET_DIR="$(ProjectDirAssetsSlash)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)third_party\imgui;$(ProjectDir)third_party\imgui\backends;$(ProjectDir)third_party\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;dwmapi.lib;shell32.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;UNICODE;_UNICODE;NOMINMAX;WIN32_LEAN_AND_MEAN;HB_ASSET_DIR="$(ProjectDirAssetsSlash)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)third_party\imgui;$(ProjectDir)third_party\imgui\backends;$(ProjectDir)third_party\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;dwmapi.lib;shell32.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\intro\intro.cpp" />
+    <ClCompile Include="src\intro\crystal_material.cpp" />
+    <ClCompile Include="src\assets\fonts.cpp" />
+    <ClCompile Include="src\assets\embedded.cpp" />
+    <ClCompile Include="src\ui\theme.cpp" />
+    <ClCompile Include="src\ui\paint.cpp" />
+    <ClCompile Include="src\ui\widgets.cpp" />
+    <ClCompile Include="src\ui\shell.cpp" />
+    <ClCompile Include="src\gfx\texture.cpp" />
+    <ClCompile Include="src\gfx\background.cpp" />
+    <ClCompile Include="third_party\imgui\imgui.cpp"><SDLCheck>false</SDLCheck></ClCompile>
+    <ClCompile Include="third_party\imgui\imgui_draw.cpp"><SDLCheck>false</SDLCheck></ClCompile>
+    <ClCompile Include="third_party\imgui\imgui_tables.cpp"><SDLCheck>false</SDLCheck></ClCompile>
+    <ClCompile Include="third_party\imgui\imgui_widgets.cpp"><SDLCheck>false</SDLCheck></ClCompile>
+    <ClCompile Include="third_party\imgui\backends\imgui_impl_win32.cpp"><SDLCheck>false</SDLCheck></ClCompile>
+    <ClCompile Include="third_party\imgui\backends\imgui_impl_dx11.cpp"><SDLCheck>false</SDLCheck></ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ResourceCompile Include="hanabi.rc" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClInclude Include="src\intro\intro.h" />
+    <ClInclude Include="src\intro\crystal_material.h" />
+    <ClInclude Include="src\assets\fonts.h" />
+    <ClInclude Include="src\assets\embedded.h" />
+    <ClInclude Include="src\core\spring.h" />
+    <ClInclude Include="src\core\easing.h" />
+    <ClInclude Include="src\core\time.h" />
+    <ClInclude Include="src\core\display.h" />
+    <ClInclude Include="src\gfx\color.h" />
+    <ClInclude Include="src\ui\theme.h" />
+    <ClInclude Include="src\ui\paint.h" />
+    <ClInclude Include="src\ui\ui_ctx.h" />
+    <ClInclude Include="src\ui\widgets.h" />
+    <ClInclude Include="src\ui\shell.h" />
+    <ClInclude Include="src\gfx\texture.h" />
+    <ClInclude Include="src\gfx\background.h" />
+    <ClInclude Include="src\gfx\window_motion.h" />
+    <ClInclude Include="third_party\imgui\imgui.h" />
+    <ClInclude Include="third_party\imgui\imgui_internal.h" />
+    <ClInclude Include="third_party\imgui\imconfig.h" />
+    <ClInclude Include="third_party\imgui\imstb_rectpack.h" />
+    <ClInclude Include="third_party\imgui\imstb_textedit.h" />
+    <ClInclude Include="third_party\imgui\imstb_truetype.h" />
+    <ClInclude Include="third_party\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="third_party\imgui\backends\imgui_impl_dx11.h" />
+    <ClInclude Include="third_party\stb\stb_image.h" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="assets\fonts\subset\LXGWWenKai-Medium.subset.ttf" />
+    <None Include="assets\fonts\subset\LXGWWenKai-Regular.subset.ttf" />
+    <None Include="assets\fonts\subset\CormorantGaramond.subset.ttf" />
+    <None Include="assets\fonts\subset\Cinzel.subset.ttf" />
+    <None Include="assets\fonts\SourceSans3-Light.ttf" />
+    <None Include="assets\fonts\SourceSans3-LICENSE.md" />
+    <None Include="assets\tex\ganyu-bg-4k.jpg" />
+    <None Include="assets\tex\ganyu-flow-mask.png" />
+    <None Include="assets\tex\ganyu-icon.png" />
+    <None Include="assets\tex\ganyu-flow-rg.png" />
+    <None Include="assets\tex\ganyu-phase.png" />
+    <None Include="assets\tex\ganyu-shake-opacity.png" />
+    <None Include="assets\tex\ganyu-wave-a.png" />
+    <None Include="assets\tex\ganyu-wave-b.png" />
+    <None Include="assets\tex\ganyu-overlay-alpha.png" />
+    <None Include="assets\tex\target-figure.png" />
+    <None Include="third_party\imgui\LICENSE.txt" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
