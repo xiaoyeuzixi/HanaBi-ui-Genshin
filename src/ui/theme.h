@@ -34,6 +34,16 @@ struct Skin {
     float strokeW = 1.f;
 };
 
+enum class Element { None, Cryo, Electro, Pyro, Dendro, Hydro, Anemo, Geo };
+enum class Scenery { Plain, Lanterns, Sakura, Fireworks, Sanctuary, Opera, Archive, Stone };
+enum class Opening { Element, FaruzanMechanism, ZhongliMeteor, GanyuFrostLotus, YaeSesshouSakura, YoimiyaGoldfish, NahidaDreamSanctuary, FurinaWaterStage };
+struct ThemeText {
+    const char* constellation="H A N A B I   /   S T U D I O";
+    const char* signature="你的工作空间";
+    const char* sceneDetail="按自己的喜好，调整空间的细节";
+    const char* particleLabel="微光粒子";
+    const char* motto="A QUIET MOMENT";
+};
 struct ThemeDef {
     const char* nameCn;
     const char* nameEn;
@@ -41,10 +51,16 @@ struct ThemeDef {
     Skin skin;
     const char* key;
     bool character;
+    Element element;
+    Scenery scenery;
+    const char* caption;
+    Opening opening=Opening::Element;
+    ThemeText text;
+    ImU32 preview0=0,preview1=0;
 };
 
-constexpr int kThemeCount = 4;
-constexpr int kGanyuTheme = 0, kLightTheme = 1, kDarkTheme = 2, kYaeTheme = 3;
+constexpr int kThemeCount = 9;
+constexpr int kGanyuTheme = 0, kLightTheme = 1, kDarkTheme = 2, kYaeTheme = 3, kYoimiyaTheme = 4, kNahidaTheme = 5, kFurinaTheme = 6, kFaruzanTheme = 7, kZhongliTheme = 8;
 
 const ThemeDef& ThemeAt(int i);
 inline bool IsCharacterTheme(int i) { return i >= 0 && i < kThemeCount && ThemeAt(i).character; }

@@ -5,7 +5,7 @@
 namespace hb {
 class Character {
 public:
-    bool Init(ID3D11Device*,ID3D11DeviceContext*);
+    bool Init(ID3D11Device*,ID3D11DeviceContext*,const char* asset="tex/yae-character.hbc");
     void Draw(float time);
     void Shutdown();
 private:
@@ -14,6 +14,7 @@ private:
         Texture image,mask;
         std::vector<Vertex> base;
         std::vector<int16_t> poses;
+        std::vector<uint16_t> topology;
         ID3D11Buffer* indices=nullptr;
         UINT indexCount=0,id=0,kind=0;
         std::array<float,4> wave{};

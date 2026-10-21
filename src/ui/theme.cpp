@@ -1,4 +1,5 @@
 #include "ui/theme.h"
+#include "characters/characters.h"
 
 #include <cmath>
 
@@ -8,58 +9,6 @@ namespace {
 inline Rgba C(uint32_t hex, int a) { return Hex(hex, float(a) / 255.f); }
 
 inline Rgba A(const Rgba& c, int a) { return Rgba{c.r, c.g, c.b, float(a) / 255.f}; }
-
-Skin MakeGanyu() {
-    Skin s;
-
-    s.backdrop0 = C(0x060B14, 24);
-    s.backdrop1 = C(0x0A101C, 40);
-    s.win0 = C(0x0C1A30, 12);
-    s.win1 = C(0x091525, 34);
-    s.winStroke = C(0x8FE6F6, 54);
-    s.winStroke2 = C(0x000000, 60);
-    s.sidebar0 = C(0x0C192B, 115);
-    s.sidebar1 = C(0x091321, 160);
-    s.hairline = C(0x8FE6F6, 22);
-    s.divider = C(0xEAF4FF, 16);
-    s.scrim = C(0x000000, 70);
-    s.shadow = C(0x02060E, 90);
-
-    s.card0 = C(0x152A41, 84);
-    s.card1 = C(0x102137, 114);
-    s.cardStroke = C(0xA0CDE7, 40);
-    s.cardInnerHi = C(0xFFFFFF, 34);
-    s.cardInnerLo = C(0x000000, 44);
-    s.knob0 = C(0xFFFFFF, 255);
-    s.knob1 = C(0xE3F3FA, 255);
-    s.trackOff0 = C(0xFFFFFF, 34);
-    s.trackOff1 = C(0xFFFFFF, 22);
-    s.trackOn0 = C(0x8FE6F6, 255);
-    s.trackOn1 = C(0x5FC9E8, 255);
-    s.segTrack = C(0x000000, 56);
-    s.segPill = C(0xFFFFFF, 30);
-    s.segStroke = C(0xFFFFFF, 34);
-    s.field0 = C(0xFFFFFF, 10);
-    s.field1 = C(0xFFFFFF, 5);
-    s.fieldStroke = C(0xFFFFFF, 22);
-
-    s.text = C(0xEAF4FF, 255);
-    s.text2 = C(0xBED2E5, 255);
-    s.text3 = C(0x94ABC4, 255);
-    s.accent = C(0x8FE6F6, 255);
-    s.accent2 = C(0xB6A8FF, 255);
-    s.accentSoft = C(0x8FE6F6, 34);
-    s.accentGlow = C(0x8FE6F6, 120);
-    s.good = C(0x6FF0C0, 255);
-    s.warn = C(0xFFC978, 255);
-
-    s.radius = 20.f;
-    s.cardRadius = 14.f;
-    s.shadowK = 1.f;
-    s.light = 0.f;
-    s.strokeW = 1.f;
-    return s;
-}
 
 Skin MakeMica() {
     Skin s;
@@ -164,30 +113,16 @@ Skin MakeObsidian() {
     return s;
 }
 
-Skin MakeYae() {
-    Skin s = MakeGanyu();
-    s.backdrop0=C(0x231326,30); s.backdrop1=C(0x35192D,40);
-    s.win0=C(0x30192F,18); s.win1=C(0x27142B,38);
-    s.sidebar0=C(0x301C35,161); s.sidebar1=C(0x241328,197);
-    s.winStroke=C(0xE6B4D7,62); s.hairline=C(0xEDC9A3,38);
-    s.card0=C(0x3E2541,122); s.card1=C(0x2C1934,154);
-    s.cardStroke=C(0xF1C1DD,53); s.cardInnerHi=C(0xFFE9F6,28);
-    s.text=C(0xFFF0F8,255); s.text2=C(0xE7CBDF,255); s.text3=C(0xBE9DB9,255);
-    s.accent=C(0xF2B8DF,255); s.accent2=C(0xBA90F5,255);
-    s.accentSoft=C(0xE6A1D0,37); s.accentGlow=C(0xC978F0,118);
-    s.trackOn0=s.accent; s.trackOn1=s.accent2;
-    s.segTrack=C(0x1F102B,76); s.segPill=C(0xE8B5D7,37);
-    s.field0=C(0xFCE5F6,14); s.fieldStroke=C(0xE3BED5,30);
-    s.good=C(0xD8C19A,255); s.warn=C(0xF0C995,255);
-    s.cardRadius=12.f; s.radius=18.f;
-    return s;
-}
-
 ThemeDef g_defs[kThemeCount] = {
-    {"甘雨", "GANYU", "CRYO", MakeGanyu(), "ganyu", true},
-    {"云母", "MICA", "LIGHT", MakeMica(), "light", false},
-    {"曜石", "OBSIDIAN", "DARK", MakeObsidian(), "dark", false},
-    {"八重神子", "YAE MIKO", "ELECTRO", MakeYae(), "yae", true},
+    ganyu::MakeTheme(),
+    {"云母", "MICA", "LIGHT", MakeMica(), "light", false, Element::None, Scenery::Plain, "晨光"},
+    {"曜石", "OBSIDIAN", "DARK", MakeObsidian(), "dark", false, Element::None, Scenery::Plain, "静夜"},
+    yae_miko::MakeTheme(),
+    yoimiya::MakeTheme(),
+    nahida::MakeTheme(),
+    furina::MakeTheme(),
+    faruzan::MakeTheme(),
+    zhongli::MakeTheme(),
 };
 
 inline Rgba MixC(const Rgba& a, const Rgba& b, float t) { return MixLinear(a, b, t); }

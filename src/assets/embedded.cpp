@@ -34,6 +34,19 @@ const Entry kEntries[] = {
     {L"tex/yae-bg-4k.jpg", L"TEX_YAE_BG"},
     {L"tex/yae-character.hbc", L"TEX_YAE_CHARACTER"},
     {L"tex/ganyu-overlay.jpg", L"TEX_GANYU_OVERLAY"},
+    {L"tex/yoimiya-bg.jpg", L"TEX_YOIMIYA_BG"},
+    {L"tex/yoimiya-character.hbc", L"TEX_YOIMIYA_CHARACTER"},
+    {L"tex/nahida-bg.jpg", L"TEX_NAHIDA_BG"},
+    {L"tex/nahida-wave.png", L"TEX_NAHIDA_WAVE"},
+    {L"tex/nahida-shake.png", L"TEX_NAHIDA_SHAKE"},
+    {L"tex/furina-bg.jpg", L"TEX_FURINA_BG"},
+    {L"tex/furina-flow.png", L"TEX_FURINA_FLOW"},
+    {L"tex/furina-iris.png", L"TEX_FURINA_IRIS"},
+    {L"tex/furina-sway.png", L"TEX_FURINA_SWAY"},
+    {L"tex/wallpaper-noise.png", L"TEX_WALLPAPER_NOISE"},
+    {L"tex/faruzan-bg.jpg", L"TEX_FARUZAN_BG"},
+    {L"tex/faruzan-flow.png", L"TEX_FARUZAN_FLOW"},
+    {L"tex/zhongli-wallpaper.hbw", L"TEX_ZHONGLI_WALLPAPER"},
 };
 
 const int kCount = (int)(sizeof(kEntries) / sizeof(kEntries[0]));

@@ -23,6 +23,7 @@ private:
         std::vector<CrystalVertex> vertices;
         ImVec2 center,lantern;
         float radius,time,dissolve;
+        ImVec4 clip;
     };
     static void Callback(const ImDrawList*, const ImDrawCmd* cmd);
     void Render(const Request&);

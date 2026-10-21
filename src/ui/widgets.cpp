@@ -182,7 +182,7 @@ bool Segment(UiCtx& c, int id, Rc r, int& sel, const char* const* items, int n) 
 
     paint::Fill(dl, r.a, r.b, rad, c.C(c.sk.segTrack));
 
-    for(int i=0;i<n&&i<4;i++) {
+    for(int i=0;i<n&&i<8;i++) {
         auto& hover=w.itemHover[i];
         hover.Target(hoverIdx==i&&sel!=i?1.f:0.f);hover.Update(c.dt,springs::S_CRIT);
         const Rc hr(r.a.x + cellW * i + c.Px(3), r.a.y + c.Px(3), r.a.x + cellW * (i + 1) - c.Px(3),
@@ -209,7 +209,8 @@ bool Segment(UiCtx& c, int id, Rc r, int& sel, const char* const* items, int n) 
                                         IM_COL32(255, 255, 255, 110), IM_COL32(255, 255, 255, 0));
     }
 
-    const float fs = c.Fs(12.5f);
+    float fs = c.Fs(12.5f);
+    for(int i=0;i<n;++i){const float width=paint::TextSize(c.fSm,fs,items[i]).x;if(width>cellW-c.Px(10))fs*=std::max(.1f,cellW-c.Px(10))/width;}
     for (int i = 0; i < n; ++i) {
         const float ccx = r.a.x + cellW * (i + 0.5f);
         const ImU32 col = c.C(i==sel?c.sk.text:c.sk.text2);

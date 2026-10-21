@@ -14,7 +14,7 @@ struct Reader {
     const void* Bytes(size_t count){if(count>remaining)return nullptr;const void* result=p;p+=count;remaining-=count;return result;}
     template<class T>bool Read(T& value){const void* data=Bytes(sizeof(T));if(!data)return false;memcpy(&value,data,sizeof(T));return true;}
 };
-constexpr UINT maxVertices=4096;
+constexpr UINT maxVertices=16384;
 const char* shader=R"(
 cbuffer Params:register(b0){float4 frame;float4 wave;float4 size;};
 Texture2D image:register(t0);Texture2D masks:register(t1);SamplerState sampleBorder:register(s0);
@@ -43,11 +43,11 @@ float4 PS(P i):SV_TARGET{
 }
 )";
 }
-bool Character::Init(ID3D11Device* dev,ID3D11DeviceContext* context){
-    context_=context;auto asset=LoadAsset("tex/yae-character.hbc");
+bool Character::Init(ID3D11Device* dev,ID3D11DeviceContext* context,const char* path){
+    context_=context;auto asset=LoadAsset(path);
     if(!asset.Valid())return false;
     Reader reader{static_cast<const uint8_t*>(asset.data),asset.size};const auto* magic=reader.Bytes(8);UINT count=0;
-    if(!magic||memcmp(magic,"HBC0001",8)||!reader.Read(count)||!reader.Read(period_)||!reader.Read(frameCount_)||count>64||frameCount_<2||frameCount_>2048||!std::isfinite(period_)||period_<=0)return false;
+    if(!magic||memcmp(magic,"HBC0001",8)||!reader.Read(count)||!reader.Read(period_)||!reader.Read(frameCount_)||count>128||frameCount_<2||frameCount_>2048||!std::isfinite(period_)||period_<=0)return false;
     for(UINT i=0;i<count;++i){
         layers_.emplace_back();auto& layer=layers_.back();UINT vertexCount=0,pngSize=0,maskSize=0;
         if(!reader.Read(layer.id)||!reader.Read(vertexCount)||!reader.Read(layer.indexCount)||!reader.Read(pngSize)||!reader.Read(maskSize)||!reader.Read(layer.kind)||!reader.Read(layer.wave)||vertexCount>maxVertices||!vertexCount||layer.indexCount>65535){Shutdown();return false;}
@@ -57,6 +57,7 @@ bool Character::Init(ID3D11Device* dev,ID3D11DeviceContext* context){
         const size_t poseSize=size_t(frameCount_)*vertexCount*2;const auto* poses=reader.Bytes(poseSize*sizeof(int16_t));
         if(!layer.image.Valid()||!layer.mask.Valid()||!base||!indices||!poses){Shutdown();return false;}
         layer.base.resize(vertexCount);memcpy(layer.base.data(),base,vertexCount*sizeof(Vertex));layer.poses.resize(poseSize);memcpy(layer.poses.data(),poses,poseSize*sizeof(int16_t));
+        layer.topology.resize(layer.indexCount);memcpy(layer.topology.data(),indices,layer.indexCount*sizeof(uint16_t));
         for(UINT j=0;j<layer.indexCount;++j){uint16_t index=0;memcpy(&index,static_cast<const uint8_t*>(indices)+j*2,2);if(index>=vertexCount){Shutdown();return false;}}
         D3D11_BUFFER_DESC buffer{};buffer.ByteWidth=layer.indexCount*sizeof(uint16_t);buffer.Usage=D3D11_USAGE_IMMUTABLE;buffer.BindFlags=D3D11_BIND_INDEX_BUFFER;D3D11_SUBRESOURCE_DATA init{indices};
         if(FAILED(dev->CreateBuffer(&buffer,&init,&layer.indices))){Shutdown();return false;}
@@ -70,21 +71,50 @@ bool Character::Init(ID3D11Device* dev,ID3D11DeviceContext* context){
     D3D11_BUFFER_DESC buffer{};buffer.ByteWidth=maxVertices*sizeof(Vertex);buffer.Usage=D3D11_USAGE_DYNAMIC;buffer.BindFlags=D3D11_BIND_VERTEX_BUFFER;buffer.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;ok&=SUCCEEDED(dev->CreateBuffer(&buffer,nullptr,&vertices_));buffer.ByteWidth=48;buffer.BindFlags=D3D11_BIND_CONSTANT_BUFFER;ok&=SUCCEEDED(dev->CreateBuffer(&buffer,nullptr,&params_));
     D3D11_SAMPLER_DESC sampler{};sampler.Filter=D3D11_FILTER_MIN_MAG_MIP_LINEAR;sampler.AddressU=sampler.AddressV=sampler.AddressW=D3D11_TEXTURE_ADDRESS_BORDER;sampler.MaxLOD=D3D11_FLOAT32_MAX;ok&=SUCCEEDED(dev->CreateSamplerState(&sampler,&sampler_));
     D3D11_BLEND_DESC blend{};auto& rt=blend.RenderTarget[0];rt.BlendEnable=TRUE;rt.SrcBlend=D3D11_BLEND_SRC_ALPHA;rt.DestBlend=D3D11_BLEND_INV_SRC_ALPHA;rt.BlendOp=rt.BlendOpAlpha=D3D11_BLEND_OP_ADD;rt.SrcBlendAlpha=D3D11_BLEND_ONE;rt.DestBlendAlpha=D3D11_BLEND_INV_SRC_ALPHA;rt.RenderTargetWriteMask=D3D11_COLOR_WRITE_ENABLE_ALL;ok&=SUCCEEDED(dev->CreateBlendState(&blend,&blend_));
-    printf("[character] source puppet: %zu layers, %u poses, %.1fs loop %s\n",layers_.size(),frameCount_,period_,ok?"PASS":"FAIL");if(!ok)Shutdown();return ok;
+    printf("[character] %s: %zu layers, %u poses, %.1fs loop %s\n",path,layers_.size(),frameCount_,period_,ok?"PASS":"FAIL");if(!ok)Shutdown();return ok;
 }
 void Character::Draw(float time){
     if(!ps_)return;
     const float at=std::fmod(std::max(time,0.f),period_)/period_*(frameCount_-1),k=at-floorf(at);const size_t a=size_t(at),b=std::min(a+1,size_t(frameCount_-1));
     const UINT stride=sizeof(Vertex),offset=0;context_->IASetInputLayout(layout_);context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);context_->IASetVertexBuffers(0,1,&vertices_,&stride,&offset);
     context_->VSSetShader(vs_,nullptr,0);context_->PSSetShader(ps_,nullptr,0);context_->PSSetConstantBuffers(0,1,&params_);context_->PSSetSamplers(0,1,&sampler_);context_->OMSetBlendState(blend_,nullptr,0xffffffff);
+    std::vector<Vertex> clip;
+    UINT clipEnd=UINT(-1);
     for(const auto& layer:layers_){
+        const size_t n=layer.base.size(),startA=a*n*2,startB=b*n*2;
+        std::vector<Vertex> posed=layer.base;
+        for(size_t j=0;j<n;++j){posed[j].x+=(layer.poses[startA+j*2]*(1-k)+layer.poses[startB+j*2]*k)/32;posed[j].y+=(layer.poses[startA+j*2+1]*(1-k)+layer.poses[startB+j*2+1]*k)/32;}
+        if(layer.kind==3){clip.clear();for(auto index:layer.topology)clip.push_back(posed[index]);clipEnd=UINT(layer.wave[0]);continue;}
+        std::vector<Vertex> clipped;
+        const bool useClip=!clip.empty();
+        if(useClip){
+            auto side=[](const Vertex& p,const Vertex& q,const Vertex& r){return(q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x);};
+            for(size_t ci=0;ci+2<clip.size();ci+=3){
+                const float sign=side(clip[ci],clip[ci+1],clip[ci+2])>=0?1.f:-1.f;
+                for(size_t ti=0;ti+2<layer.topology.size();ti+=3){
+                    std::vector<Vertex> polygon{posed[layer.topology[ti]],posed[layer.topology[ti+1]],posed[layer.topology[ti+2]]};
+                    for(int edge=0;edge<3&&!polygon.empty();++edge){
+                        const auto p=clip[ci+edge],q=clip[ci+(edge+1)%3];std::vector<Vertex> next;
+                        auto previous=polygon.back();float before=side(p,q,previous)*sign;
+                        for(const auto current:polygon){const float after=side(p,q,current)*sign;
+                            if((before>=0)!=(after>=0)){const float f=before/(before-after);next.push_back({previous.x+(current.x-previous.x)*f,previous.y+(current.y-previous.y)*f,previous.u+(current.u-previous.u)*f,previous.v+(current.v-previous.v)*f});}
+                            if(after>=0)next.push_back(current);previous=current;before=after;
+                        }polygon=std::move(next);
+                    }
+                    for(size_t j=1;j+1<polygon.size();++j){clipped.push_back(polygon[0]);clipped.push_back(polygon[j]);clipped.push_back(polygon[j+1]);}
+                }
+            }
+        }
+        const auto& output=useClip?clipped:posed;
+        if(layer.id==clipEnd){clip.clear();clipEnd=UINT(-1);}
+        if(output.empty()||output.size()>maxVertices)continue;
         D3D11_MAPPED_SUBRESOURCE mapped{};if(FAILED(context_->Map(vertices_,0,D3D11_MAP_WRITE_DISCARD,0,&mapped)))continue;
-        auto* vertices=static_cast<Vertex*>(mapped.pData);const size_t n=layer.base.size(),startA=a*n*2,startB=b*n*2;
-        for(size_t j=0;j<n;++j){vertices[j]=layer.base[j];vertices[j].x+=(layer.poses[startA+j*2]*(1-k)+layer.poses[startB+j*2]*k)/32;vertices[j].y+=(layer.poses[startA+j*2+1]*(1-k)+layer.poses[startB+j*2+1]*k)/32;}
+        memcpy(mapped.pData,output.data(),output.size()*sizeof(Vertex));
         context_->Unmap(vertices_,0);
         const float params[]={3840,2160,time,float(layer.kind),layer.wave[0],layer.wave[1],layer.wave[2],layer.wave[3],float(layer.image.w),float(layer.image.h),0,0};
         if(FAILED(context_->Map(params_,0,D3D11_MAP_WRITE_DISCARD,0,&mapped)))continue;memcpy(mapped.pData,params,sizeof(params));context_->Unmap(params_,0);
-        ID3D11ShaderResourceView* textures[]={layer.image.srv,layer.mask.srv};context_->PSSetShaderResources(0,2,textures);context_->IASetIndexBuffer(layer.indices,DXGI_FORMAT_R16_UINT,0);context_->DrawIndexed(layer.indexCount,0,0);
+        ID3D11ShaderResourceView* textures[]={layer.image.srv,layer.mask.srv};context_->PSSetShaderResources(0,2,textures);
+        if(useClip)context_->Draw(UINT(output.size()),0);else {context_->IASetIndexBuffer(layer.indices,DXGI_FORMAT_R16_UINT,0);context_->DrawIndexed(layer.indexCount,0,0);}
     }
     ID3D11ShaderResourceView* none[2]{};context_->PSSetShaderResources(0,2,none);
 }

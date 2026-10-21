@@ -80,6 +80,7 @@ void Intro::DrawElectroEmblem(ImDrawList* dl,ImVec2 center,float radius,float ti
     }
 }
 void Intro::DrawElectroMark(ImDrawList* dl,ImVec2 origin,float alpha){
+    if(opening==Opening::YaeSesshouSakura){DrawCharacterMark(dl,origin,alpha);return;}
     const auto pose=ElectroPose(origin);dl->PushClipRect(origin,{origin.x+W,origin.y+H},true);
     DrawElectroEmblem(dl,pose.center,pose.radius,finished?std::max(t,energyTime):t,pose.opacity*alpha);
     dl->PopClipRect();

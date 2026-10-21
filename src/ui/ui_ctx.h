@@ -57,7 +57,7 @@ struct Smooth {
 
 struct WState {
     Smooth hov, prs, act, val, aux;
-    Smooth itemHover[4];
+    Smooth itemHover[8];
     float  raw = 0.f;
 };
 

@@ -259,7 +259,7 @@ bool CrystalMaterial::Init(ID3D11Device* device, ID3D11DeviceContext* context) {
     ok&=SUCCEEDED(device_->CreateSamplerState(&sampler,&sampler_));
     D3D11_RASTERIZER_DESC raster{};
     raster.FillMode=D3D11_FILL_SOLID; raster.CullMode=D3D11_CULL_NONE;
-    raster.DepthClipEnable=TRUE; raster.MultisampleEnable=TRUE;
+    raster.DepthClipEnable=TRUE; raster.MultisampleEnable=TRUE;raster.ScissorEnable=TRUE;
     ok&=SUCCEEDED(device_->CreateRasterizerState(&raster,&raster_));
     D3D11_BLEND_DESC blend{};
     auto& rt=blend.RenderTarget[0]; rt.BlendEnable=TRUE;
@@ -296,7 +296,8 @@ bool CrystalMaterial::Snapshot(ID3D11Texture2D* target) {
 void CrystalMaterial::Queue(ImDrawList* list,std::vector<CrystalVertex>&& vertices,
                             ImVec2 center,float radius,float time,float dissolve,ImVec2 lantern) {
     if(!ps_||vertices.empty())return;
-    requests_.push_back({this,std::move(vertices),center,lantern,radius,time,dissolve});
+    const auto lo=list->GetClipRectMin(),hi=list->GetClipRectMax();
+    requests_.push_back({this,std::move(vertices),center,lantern,radius,time,dissolve,{lo.x,lo.y,hi.x,hi.y}});
     list->AddCallback(Callback,&requests_.back());
     list->AddCallback(ImDrawCallback_ResetRenderState,nullptr);
 }
@@ -329,6 +330,7 @@ void CrystalMaterial::Render(const Request& r) {
     context_->PSSetShader(ps_,nullptr,0);context_->PSSetConstantBuffers(0,1,&params_);
     context_->PSSetShaderResources(0,1,&sceneView_);context_->PSSetSamplers(0,1,&sampler_);
     context_->RSSetState(raster_);context_->OMSetDepthStencilState(depth_,0);
+    const D3D11_RECT clip{LONG(std::max(0.f,r.clip.x)),LONG(std::max(0.f,r.clip.y)),LONG(std::min(float(width_),r.clip.z)),LONG(std::min(float(height_),r.clip.w))};context_->RSSetScissorRects(1,&clip);
     const float factors[4]={0,0,0,0};context_->OMSetBlendState(blend_,factors,0xffffffff);
     context_->Draw(UINT(r.vertices.size()),0);
     ID3D11ShaderResourceView* none=nullptr;context_->PSSetShaderResources(0,1,&none);

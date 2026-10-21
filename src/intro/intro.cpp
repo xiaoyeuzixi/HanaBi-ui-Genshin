@@ -1,5 +1,10 @@
 #include "intro/intro.h"
 #include "intro/electro_geometry.h"
+#include "intro/pyro_geometry.h"
+#include "intro/dendro_geometry.h"
+#include "intro/hydro_geometry.h"
+#include "intro/anemo_geometry.h"
+#include "intro/geo_geometry.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -7,6 +12,8 @@
 #include "core/easing.h"
 
 namespace hb {
+bool FaruzanIntroSelfTest();
+bool CharacterIntroSelfTest();
 namespace {
 constexpr float pi=3.14159265359f, tau=2.f*pi;
 
@@ -543,7 +550,14 @@ Intro::MarkPose Intro::Pose(ImVec2 o)const {
 }
 void Intro::Draw(ImDrawList* dl,ImVec2 o) {
     if(!dl||finished)return;
-    if(characterTheme==3){DrawElectroAtmosphere(dl,o);DrawBrand(dl,o);return;}
+    if(opening>=Opening::GanyuFrostLotus){DrawCharacterAtmosphere(dl,o);DrawBrand(dl,o);return;}
+    if(opening==Opening::FaruzanMechanism){DrawFaruzanAtmosphere(dl,o);DrawBrand(dl,o);return;}
+    if(element==Element::Electro){DrawElectroAtmosphere(dl,o);DrawBrand(dl,o);return;}
+    if(element==Element::Pyro){DrawPyroAtmosphere(dl,o);if(scenery==Scenery::Fireworks)DrawFireworkScenery(dl,o);DrawBrand(dl,o);return;}
+    if(element==Element::Dendro){DrawDendroAtmosphere(dl,o);if(scenery==Scenery::Sanctuary)DrawSanctuaryScenery(dl,o);DrawBrand(dl,o);return;}
+    if(element==Element::Hydro){DrawHydroAtmosphere(dl,o);if(scenery==Scenery::Opera)DrawOperaScenery(dl,o);DrawBrand(dl,o);return;}
+    if(element==Element::Anemo){DrawAnemoAtmosphere(dl,o);if(scenery==Scenery::Archive)DrawArchiveScenery(dl,o);DrawBrand(dl,o);return;}
+    if(element==Element::Geo){DrawGeoAtmosphere(dl,o);if(scenery==Scenery::Stone)DrawStoneScenery(dl,o);DrawBrand(dl,o);return;}
     const float fade=Opacity(),s=std::min(W,H);
     dl->PushClipRect(o,{o.x+W,o.y+H},true);
 
@@ -553,7 +567,7 @@ void Intro::Draw(ImDrawList* dl,ImVec2 o) {
     const float sideW=W*.22f;
     dl->AddRectFilledMultiColor(o,{o.x+sideW,o.y+H},Color(0x040B12,.28f*fade),Color(0x040B12,0),Color(0x040B12,0),Color(0x040B12,.28f*fade));
     dl->AddRectFilledMultiColor({o.x+W-sideW,o.y},{o.x+W,o.y+H},Color(0x040B12,0),Color(0x040B12,.28f*fade),Color(0x040B12,.28f*fade),Color(0x040B12,0));
-    for(const auto& p:lant) {
+    if(scenery==Scenery::Lanterns)for(const auto& p:lant) {
         const float y=p.y0-t*p.spd,x=p.x+.007f*std::sin(t*.40f+p.ph);
         const float edge=S(y,-.1f,.05f)*(1.f-S(y,1.05f,1.2f));
         Lamp(dl,{o.x+W*x,o.y+H*y},s*p.size,p.ph,t,fade*edge*S(t,0,.70f)*.85f);
@@ -577,7 +591,7 @@ void Intro::DrawBrand(ImDrawList* dl,ImVec2 o) {
         for(int j=0;j<6;++j)width+=fBrand->CalcTextSizeA(fs,FLT_MAX,0,title+j,title+j+1).x;
         const float y=std::round(o.y+H-margin-fs);
         float x=std::round(o.x+W-margin-width);
-        const unsigned tint=characterTheme==3?0xEBC9F5:0xD0E5F2;
+        const unsigned tint=element==Element::Geo?0xF8DC9E:(element==Element::Pyro?0xFFE0B6:(element==Element::Electro?0xEBC9F5:0xD0E5F2));
         dl->PushClipRect(o,{o.x+W,o.y+H},true);
         for(int j=0;j<6;++j) {
             dl->AddText(fBrand,fs,{x,y+1.f},Color(0x000000,reveal*.16f),title+j,title+j+1);
@@ -587,14 +601,24 @@ void Intro::DrawBrand(ImDrawList* dl,ImVec2 o) {
         dl->PopClipRect();
     }
 }
+void Intro::DrawLanternScenery(ImDrawList* dl,ImVec2 o){
+    const float s=std::min(W,H),fade=Opacity();
+    for(const auto& p:lant){
+        const float y=p.y0-t*p.spd,x=p.x+.007f*std::sin(t*.40f+p.ph);
+        const float edge=S(y,-.1f,.05f)*(1-S(y,1.05f,1.2f));
+        Lamp(dl,{o.x+W*x,o.y+H*y},s*p.size,p.ph,t,fade*edge*S(t,0,.70f)*.85f);
+    }
+}
 void Intro::DrawCryoEmblem(ImDrawList* dl,ImVec2 center,float radius,float time,float alpha) {
     if(!dl||alpha<.001f)return;
     auto vertices=SettledCrystal();
     for(auto& vertex:vertices){vertex.x=center.x+vertex.x*radius;vertex.y=center.y+vertex.y*radius;vertex.opacity*=alpha;}
     material.Queue(dl,std::move(vertices),center,radius,time,0.f,{center.x+radius*2,center.y-radius*3});
 }
+std::vector<CrystalVertex> Intro::CryoMesh(){return SettledCrystal();}
 void Intro::DrawMark(ImDrawList* dl,ImVec2 o,float alpha) {
     if(!dl||alpha<.001f)return;
+    if(opening==Opening::GanyuFrostLotus){DrawCharacterMark(dl,o,alpha);return;}
     const auto pose=Pose(o);
     const ImVec2 center=pose.center;
     const float radius=pose.radius,turn=S(t,kTurnStart,kTurnEnd),angle=(5.f*tau/6.f)*turn;
@@ -646,7 +670,7 @@ void Intro::DrawMark(ImDrawList* dl,ImVec2 o,float alpha) {
     dl->PopClipRect();
 }
 bool IntroSelfTest(char* out,int cap) {
-    bool ok=!Crystal().empty()&&electro::SelfTest();
+    bool ok=!Crystal().empty()&&electro::SelfTest()&&pyro::SelfTest()&&dendro::SelfTest()&&hydro::SelfTest()&&anemo::SelfTest()&&geo::SelfTest()&&FaruzanIntroSelfTest()&&CharacterIntroSelfTest();
     float frontArea=0,minDepth=1,maxDepth=0;
     for(const Face& f:Crystal()) {
         const V3 normal=Cross(f.p[1]-f.p[0],f.p[2]-f.p[0]);
@@ -692,6 +716,16 @@ bool IntroSelfTest(char* out,int cap) {
         test.t=Intro::kDuration;
         const auto electroEnd=test.ElectroPose({0,0});
         ok&=std::abs(electroEnd.center.x-test.dockCenter.x)<.0001f&&std::abs(electroEnd.center.y-test.dockCenter.y)<.0001f&&std::abs(electroEnd.radius-test.dockRadius)<.0001f;
+        const auto pyroEnd=test.PyroPose({0,0});
+        ok&=std::abs(pyroEnd.center.x-test.dockCenter.x)<.0001f&&std::abs(pyroEnd.center.y-test.dockCenter.y)<.0001f&&std::abs(pyroEnd.radius-test.dockRadius)<.0001f;
+        const auto dendroEnd=test.DendroPose({0,0});
+        ok&=std::abs(dendroEnd.center.x-test.dockCenter.x)<.0001f&&std::abs(dendroEnd.center.y-test.dockCenter.y)<.0001f&&std::abs(dendroEnd.radius-test.dockRadius)<.0001f;
+        const auto hydroEnd=test.HydroPose({0,0});
+        ok&=std::abs(hydroEnd.center.x-test.dockCenter.x)<.0001f&&std::abs(hydroEnd.center.y-test.dockCenter.y)<.0001f&&std::abs(hydroEnd.radius-test.dockRadius)<.0001f;
+        const auto anemoEnd=test.AnemoPose({0,0});
+        ok&=std::abs(anemoEnd.center.x-test.dockCenter.x)<.0001f&&std::abs(anemoEnd.center.y-test.dockCenter.y)<.0001f&&std::abs(anemoEnd.radius-test.dockRadius)<.0001f;
+        const auto geoEnd=test.GeoPose({0,0});
+        ok&=std::abs(geoEnd.center.x-test.dockCenter.x)<.0001f&&std::abs(geoEnd.center.y-test.dockCenter.y)<.0001f&&std::abs(geoEnd.radius-test.dockRadius)<.0001f;
     }
     const float eps=.0001f;
     ok&=std::abs(S(eps,0,1)/eps)<.001f;

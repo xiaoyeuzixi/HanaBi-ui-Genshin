@@ -390,10 +390,23 @@ struct Experience {
         }
         intro.Bind(fonts.opening, fonts.ui, fonts.caps);
         intro.material.SetStyle(options.iceStyle);
-        intro.characterTheme=options.theme;
+        intro.element=hb::ThemeAt(options.theme).element;
+        intro.scenery=hb::ThemeAt(options.theme).scenery;
+        intro.opening=hb::ThemeAt(options.theme).opening;
         if(!intro.electroMaterial.Init(dev,ctx)){Shutdown();return false;}
+        if(!intro.pyroMaterial.Init(dev,ctx,true)){Shutdown();return false;}
+        if(!intro.dendroMaterial.Init(dev,ctx,2)){Shutdown();return false;}
+        if(!intro.hydroMaterial.Init(dev,ctx,3)){Shutdown();return false;}
+        if(!intro.anemoMaterial.Init(dev,ctx,4)){Shutdown();return false;}
+        if(!intro.geoMaterial.Init(dev,ctx,5)){Shutdown();return false;}
+        if(!intro.faruzanMaterial.Init(dev,ctx,6)){Shutdown();return false;}
         shell.drawElectro=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawElectroEmblem(dl,center,radius,time,alpha);};
         shell.drawCryo=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawCryoEmblem(dl,center,radius,time,alpha);};
+        shell.drawPyro=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawPyroEmblem(dl,center,radius,time,alpha);};
+        shell.drawDendro=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawDendroEmblem(dl,center,radius,time,alpha);};
+        shell.drawHydro=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawHydroEmblem(dl,center,radius,time,alpha);};
+        shell.drawAnemo=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawFaruzanEmblem(dl,center,radius,time,alpha);};
+        shell.drawGeo=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawGeoEmblem(dl,center,radius,time,alpha);};
         shell.Layout(float(w), float(h), scale);
         shell.ApplyFonts(fonts.ui, fonts.display, fonts.caps);
         shell.targetFigure=hb::LoadTexture(dev,"tex/target-figure.png");
@@ -404,6 +417,12 @@ struct Experience {
         shell.m.navSel = options.page;
         shell.m.fontPercent=options.fontPercent;
         shell.yaeMix.Snap(options.theme==hb::UI_THEME_YAE?1.f:0.f);
+        shell.yoimiyaMix.Snap(options.theme==hb::UI_THEME_YOIMIYA?1.f:0.f);
+        shell.nahidaMix.Snap(options.theme==hb::UI_THEME_NAHIDA?1.f:0.f);
+        shell.furinaMix.Snap(options.theme==hb::UI_THEME_FURINA?1.f:0.f);
+        shell.faruzanMix.Snap(options.theme==hb::UI_THEME_FARUZAN?1.f:0.f);
+        shell.zhongliMix.Snap(options.theme==hb::UI_THEME_ZHONGLI?1.f:0.f);
+        for(int i=0;i<7;++i)shell.elementMix[i].Snap(int(intro.element)==i+1?1.f:0.f);
         persist=options.persist;preferencePath=options.preferencePath;
         if(persist) {
             savedPreferences=options.preferences;
@@ -438,6 +457,12 @@ struct Experience {
 
     ID3D11RenderTargetView* Draw(ID3D11RenderTargetView* rtv, float w, float h, bool wallpaperOnly) {
         intro.electroMaterial.BeginFrame();
+        intro.pyroMaterial.BeginFrame();
+        intro.dendroMaterial.BeginFrame();
+        intro.hydroMaterial.BeginFrame();
+        intro.anemoMaterial.BeginFrame();
+        intro.geoMaterial.BeginFrame();
+        intro.faruzanMaterial.BeginFrame();
         intro.material.BeginFrame();
         if (w != intro.W || h != intro.H) {
             intro.W = w; intro.H = h;
@@ -449,12 +474,23 @@ struct Experience {
         usingAA = usingAA && aaTarget;
         if (usingAA) rtv = aaTarget;
         hb::Background::View view;
-        const float characterMix=std::clamp(shell.yaeMix.V(intro.characterTheme==hb::UI_THEME_YAE?1.f:0.f),0.f,1.f);
+        float characterMix=std::clamp(shell.yaeMix.V(0.f),0.f,1.f);
+        float yoimiyaMix=std::clamp(shell.yoimiyaMix.V(0.f),0.f,1.f);
+        float nahidaMix=std::clamp(shell.nahidaMix.V(0.f),0.f,1.f);
+        float furinaMix=std::clamp(shell.furinaMix.V(0.f),0.f,1.f);
+        float faruzanMix=std::clamp(shell.faruzanMix.V(0.f),0.f,1.f);
+        float zhongliMix=std::clamp(shell.zhongliMix.V(0.f),0.f,1.f);
+        const float total=characterMix+yoimiyaMix+nahidaMix+furinaMix+faruzanMix+zhongliMix;if(total>1){characterMix/=total;yoimiyaMix/=total;nahidaMix/=total;furinaMix/=total;faruzanMix/=total;zhongliMix/=total;}
         view.characterMix=characterMix;
+        view.yoimiyaMix=yoimiyaMix;
+        view.nahidaMix=nahidaMix;
+        view.furinaMix=furinaMix;
+        view.faruzanMix=faruzanMix;
+        view.zhongliMix=zhongliMix;
         if(shellReady&&!wallpaperOnly) {
             const float k=hb::Ease(hb::E_PAGE,hb::Clamp01(shell.enterT/1.2f));
-            view.zoom=1.f+(.22f-.12f*characterMix)*k;
-            view.focusX=.5f+(-.105f+.165f*characterMix)*k;
+            view.zoom=1.f+(.22f-.12f*characterMix-.16f*yoimiyaMix-.20f*nahidaMix-.16f*furinaMix-.18f*faruzanMix-.19f*zhongliMix)*k;
+            view.focusX=.5f+(-.105f+.165f*characterMix+.105f*yoimiyaMix+.105f*nahidaMix+.12f*furinaMix+.10f*faruzanMix+.105f*zhongliMix)*k;
             view.focusY=.5f-.015f*k;
             view.dim=(1.f-shell.wallpaperMix.V(.82f))*.65f*k;
         }
@@ -467,8 +503,13 @@ struct Experience {
             intro.Draw(dl, ImVec2(0, 0));
             if (shellReady) shell.Draw(dl);
             const float markAlpha=shellReady?shell.sceneMix:1.f;
-            intro.DrawMark(dl, ImVec2(0, 0),markAlpha*(1-characterMix));
-            intro.DrawElectroMark(dl, ImVec2(0, 0),markAlpha*characterMix);
+            intro.DrawMark(dl, ImVec2(0, 0),markAlpha*std::clamp(shell.elementMix[0].V(0.f),0.f,1.f));
+            intro.DrawElectroMark(dl, ImVec2(0, 0),markAlpha*std::clamp(shell.elementMix[1].V(0.f),0.f,1.f));
+            intro.DrawPyroMark(dl, ImVec2(0, 0),markAlpha*std::clamp(shell.elementMix[2].V(0.f),0.f,1.f));
+            intro.DrawDendroMark(dl, ImVec2(0, 0),markAlpha*std::clamp(shell.elementMix[3].V(0.f),0.f,1.f));
+            intro.DrawHydroMark(dl, ImVec2(0, 0),markAlpha*std::clamp(shell.elementMix[4].V(0.f),0.f,1.f));
+            intro.DrawAnemoMark(dl, ImVec2(0, 0),markAlpha*std::clamp(shell.elementMix[5].V(0.f),0.f,1.f));
+            intro.DrawGeoMark(dl, ImVec2(0, 0),markAlpha*std::clamp(shell.elementMix[6].V(0.f),0.f,1.f));
         }
         return rtv;
     }
@@ -500,12 +541,13 @@ void ProbeInput(const Experience& scene, float time, float start) {
     click(2.8f,260,473);
     click(3.1f,85,393);
     float cw=(w-14)/2.f;
-    click(3.65f,204+cw*.5f,294);
-    click(4.25f,204+cw+14+cw*.5f,294);
-    click(4.85f,204+cw*.5f,210);
-    click(5.0f,204+cw*.5f,294);
-    click(5.15f,204+cw+14+cw*.5f,294);
-    click(5.3f,204+cw*.5f,210);
+    const int columns=std::max(1,int((w+14)/238));const float firstCard=(w-18-14*(columns-1))/columns;
+    click(3.65f,204+cw*.5f,s.H-61);
+    click(4.25f,204+cw+14+cw*.5f,s.H-61);
+    click(4.85f,204+firstCard*.5f,256);
+    click(5.0f,204+cw*.5f,s.H-61);
+    click(5.15f,204+cw+14+cw*.5f,s.H-61);
+    click(5.3f,204+firstCard*.5f,256);
     click(5.9f,85,177);
     ImGuiIO& io=ImGui::GetIO();
     io.AddMousePosEvent(x*s.scale,y*s.scale);io.AddMouseButtonEvent(0,down);
@@ -532,10 +574,11 @@ void ProbeFonts(const Experience& scene,float time) {
     const float elapsed=time-2.f;
     const float left=(shell.W-250.f)*.48f,trackStart=224.f,trackWidth=left-110.f;
     float x=-100,y=-100;bool down=false;
+    if(elapsed>=-.35f&&elapsed<-.20f){x=shell.W-94.f;y=77;down=elapsed<-.29f;}
     if(elapsed>=.15f&&elapsed<.9f) {
-        x=trackStart+trackWidth*hb::Clamp01((elapsed-.28f)/.48f);y=562.f;down=elapsed<.85f;
+        x=trackStart+trackWidth*hb::Clamp01((elapsed-.28f)/.48f);y=372.f;down=elapsed<.85f;
     }
-    if(elapsed>=1.15f&&elapsed<1.28f){x=204.f+left-51.f;y=550.f;down=elapsed<1.21f;}
+    if(elapsed>=1.15f&&elapsed<1.28f){x=204.f+left-51.f;y=360.f;down=elapsed<1.21f;}
     auto& io=ImGui::GetIO();io.AddMousePosEvent(x*shell.scale,y*shell.scale);io.AddMouseButtonEvent(0,down);
 }
 
@@ -549,12 +592,21 @@ void ProbeThemes(const Experience& scene,float time) {
     const auto& s=scene.shell;float x=-100,y=-100;bool down=false;
     auto click=[&](float at,float xx,float yy){if(time>=at&&time<at+.15f){x=xx;y=yy;down=time<at+.06f;}};
     const float width=s.W-232,cw=(width-14)/2;
-    for(int j=0;j<5;++j){const int slots[]={1,2,3,0,1};int slot=slots[j];click(2.f+j*.8f,204+(slot%2)*(cw+14)+cw*.5f,slot<2?210.f:294.f);}
+    const int columns=std::max(1,int((width+14)/238));const float cardWidth=(width-18-14*(columns-1))/columns;
+    auto card=[&](float at,int theme){if(theme==1||theme==2)click(at,204+(theme-1)*(cw+14)+cw*.5f,s.H-61);else {int slot=s.themeElement?0:(theme==0?0:theme-2);click(at,204+float(slot%columns)*(cardWidth+14)+cardWidth*.5f,256+float(slot/columns)*158-s.themeScrollMotion.V());}};
+    for(int j=0;j<8;++j){const int themes[]={1,2,4,0,3,5,6,7};card(2.f+j*.45f,themes[j]);}
+    auto filter=[&](float at,int index){click(at,280+(width-216)*(index+.5f)/8,153);};
+    float wheel=0;
+    if(time>=5.65f&&time<5.69f){x=204+width*.5f;y=300;wheel=-5;}
+    card(6.15f,hb::kZhongliTheme);
+    for(int j=0;j<8;++j)filter(6.7f+j*.28f,j==7?0:j+1);
+    click(9.35f,204+width-66,77);
     const float left=(width-18)*.48f,right=width-left-18,xx=204+left+18;
-    click(6.f,xx+right*.5f,534);click(6.6f,xx+20+(right-40)*.875f,578);
-    click(7.2f,xx+20+(right-40)*5/6,534);click(7.8f,xx+20+(right-40)/6,534);
-    click(8.4f,xx+20+(right-40)*5/6,534);
-    auto& io=ImGui::GetIO();io.AddMousePosEvent(x*s.scale,y*s.scale);io.AddMouseButtonEvent(0,down);
+    click(9.7f,xx+right*.5f,342);
+    for(int j=0;j<5;++j){const int fixed[]={5,6,7,8,2};const float at=10.1f+j*.95f;click(at,xx+right-61,387);if(j==3)filter(at+.20f,7);card(at+.43f,fixed[j]);}
+    click(14.8f,xx+20+(right-40)*5/6,342);click(15.2f,xx+20+(right-40)/6,342);
+    click(15.6f,xx+20+(right-40)*5/6,342);
+    auto& io=ImGui::GetIO();io.AddMousePosEvent(x*s.scale,y*s.scale);io.AddMouseButtonEvent(0,down);if(wheel)io.AddMouseWheelEvent(0,wheel);
 }
 
 struct CaptureTiming {
@@ -646,7 +698,7 @@ int RunRenderClip(const Options& options) {
     hb::WindowSnapshot windowSnapshot;
     hb::WindowMotion windowMotion;
     bool capturedWindow=false,sawMinimized=false,returnedWindow=false;
-    unsigned visitedThemes=0;bool sawFixed=false,sawRandom=false,sawFollow=false;
+    unsigned visitedThemes=0;bool sawFixed=false,sawNahidaFixed=false,sawFurinaFixed=false,sawFaruzanFixed=false,sawZhongliFixed=false,sawThemeScroll=false,sawRandom=false,sawFollow=false;
     CaptureTiming timings(off.dev);
 
     for (int i = 0; i < total && ok; ++i) {
@@ -679,6 +731,11 @@ int RunRenderClip(const Options& options) {
         sawDark |= scene.shell.theme == hb::UI_THEME_DARK;
         visitedThemes|=1u<<scene.shell.theme;
         sawFixed|=scene.shell.m.startupMode==1&&scene.shell.m.startupTheme==hb::kDarkTheme;
+        sawNahidaFixed|=scene.shell.m.startupMode==1&&scene.shell.m.startupTheme==hb::kNahidaTheme;
+        sawFurinaFixed|=scene.shell.m.startupMode==1&&scene.shell.m.startupTheme==hb::kFurinaTheme;
+        sawFaruzanFixed|=scene.shell.m.startupMode==1&&scene.shell.m.startupTheme==hb::kFaruzanTheme;
+        sawZhongliFixed|=scene.shell.m.startupMode==1&&scene.shell.m.startupTheme==hb::kZhongliTheme;
+        sawThemeScroll|=scene.shell.themeScrollMotion.V()>10.f;
         sawRandom|=scene.shell.m.startupMode==2;sawFollow|=i*dt>7.8f&&scene.shell.m.startupMode==0;
         sawSmallFont |= scene.shell.m.fontPercent==100.f;
         sawLargeFont |= scene.shell.m.fontPercent==125.f;
@@ -705,9 +762,9 @@ int RunRenderClip(const Options& options) {
     }
     timings.Report();
     if(options.exerciseThemes) {
-        bool themeOk=visitedThemes==((1u<<hb::kThemeCount)-1)&&sawFixed&&sawRandom&&sawFollow&&
-            scene.shell.theme==hb::kYaeTheme&&scene.shell.m.startupMode==2&&scene.shell.yaeMix.V()>.999f;
-        printf("appearance controls: visited=%u fixed=%d random=%d follow=%d %s\n",visitedThemes,sawFixed,sawRandom,sawFollow,themeOk?"PASS":"FAIL");ok=ok&&themeOk;
+        bool themeOk=visitedThemes==((1u<<hb::kThemeCount)-1)&&sawFixed&&sawNahidaFixed&&sawFurinaFixed&&sawFaruzanFixed&&sawZhongliFixed&&sawThemeScroll&&sawRandom&&sawFollow&&
+            scene.shell.theme==hb::kZhongliTheme&&scene.shell.m.startupMode==2&&scene.shell.zhongliMix.V()>.999f;
+        printf("appearance controls: visited=%u fixed=%d fixed-Nahida=%d fixed-Furina=%d fixed-Faruzan=%d fixed-Zhongli=%d scroll=%d random=%d follow=%d %s\n",visitedThemes,sawFixed,sawNahidaFixed,sawFurinaFixed,sawFaruzanFixed,sawZhongliFixed,sawThemeScroll,sawRandom,sawFollow,themeOk?"PASS":"FAIL");ok=ok&&themeOk;
     }
     printf("opening antialias: %s\n", scene.aaTarget ? "4x MSAA" : "inactive/unavailable");
 

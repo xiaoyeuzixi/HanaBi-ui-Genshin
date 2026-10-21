@@ -5,16 +5,19 @@
 namespace hb {
 class ElectroMaterial {
 public:
-    bool Init(ID3D11Device*,ID3D11DeviceContext*);
+    bool Init(ID3D11Device*,ID3D11DeviceContext*,int style=0);
     void Shutdown();
     void BeginFrame() { requests_.clear(); }
-    void Queue(ImDrawList*,std::vector<CrystalVertex>&&,ImVec2,float,float,float);
+    void Queue(ImDrawList*,std::vector<CrystalVertex>&&,ImVec2,float,float,float,float reflection=0.f,float waterY=0.f,float motionTime=0.f);
+    void QueueFormation(ImDrawList*,std::vector<CrystalVertex>&&,ImVec2,float,float,float,float reflection=0.f,float waterY=0.f);
 private:
     struct Request {
         ElectroMaterial* owner;
         std::vector<CrystalVertex> vertices;
         ImVec2 center;
         float radius,time,opacity;
+        ImVec4 clip;
+        float reflection,waterY,motionTime;
     };
     static void Callback(const ImDrawList*,const ImDrawCmd*);
     void Render(const Request&);
@@ -39,6 +42,7 @@ private:
     ID3D11Texture2D* scene_=nullptr;
     ID3D11ShaderResourceView* sceneView_=nullptr;
     UINT width_=0,height_=0;
+    int style_=0;
     std::deque<Request> requests_;
 };
 }

@@ -1,12 +1,14 @@
 #pragma once
 #include "imgui.h"
 #include "ui/theme.h"
+#include "characters/character_ui.h"
 #include "ui/ui_ctx.h"
 #include "gfx/texture.h"
 #include <functional>
+#include <vector>
 
 namespace hb {
-enum UiTheme { UI_THEME_GANYU=0, UI_THEME_LIGHT=1, UI_THEME_DARK=2, UI_THEME_YAE=3 };
+enum UiTheme { UI_THEME_GANYU=0, UI_THEME_LIGHT=1, UI_THEME_DARK=2, UI_THEME_YAE=3, UI_THEME_YOIMIYA=4, UI_THEME_NAHIDA=5, UI_THEME_FURINA=6, UI_THEME_FARUZAN=7, UI_THEME_ZHONGLI=8 };
 constexpr int kUiThemeCount=kThemeCount;
 struct ThemeTokens {
     const char* nameCn; const char* nameEn;
@@ -37,11 +39,22 @@ struct Shell {
     Texture targetFigure;
     std::function<void(ImDrawList*,ImVec2,float,float,float)> drawElectro;
     std::function<void(ImDrawList*,ImVec2,float,float,float)> drawCryo;
+    std::function<void(ImDrawList*,ImVec2,float,float,float)> drawPyro;
+    std::function<void(ImDrawList*,ImVec2,float,float,float)> drawDendro;
+    std::function<void(ImDrawList*,ImVec2,float,float,float)> drawHydro;
+    std::function<void(ImDrawList*,ImVec2,float,float,float)> drawAnemo;
+    std::function<void(ImDrawList*,ImVec2,float,float,float)> drawGeo;
     UiCtx cx; WState pool[kMaxWid];
-    Smooth pageWeight[5],navPosition,ganyuMix,yaeMix,wallpaperMix;
+    Smooth pageWeight[5],navPosition,ganyuMix,yaeMix,yoimiyaMix,nahidaMix,furinaMix,faruzanMix,zhongliMix,wallpaperMix;
+    Smooth elementMix[7];
     float sceneMix=1.f;
     int windowAction=0;
     int recording=-1; bool presetsSaved[3]{}; UiModel presets[3];
+    int themeView=0,themeElement=0,lastThemeView=0,lastThemeElement=0;
+    bool choosingStartup=false;
+    float themeScroll=0,themeViewEnter=1;
+    Smooth themeScrollMotion;
+    std::vector<WState> themeCardStates;
     char toast[128]{}; float toastTime=0.f;
     void Layout(float sw,float sh,float uiScale);
     void ApplyFonts(ImFont* ui,ImFont* display,ImFont* caps=nullptr);
@@ -57,6 +70,14 @@ struct Shell {
     void Panel(int id,float x,float y,float w,float h,const char* title,const char* subtitle=nullptr);
     void RowToggle(int id,float x,float y,float w,const char* label,bool& value,const char* detail=nullptr);
     void Range(int id,float x,float y,float w,const char* label,float& value,float lo,float hi,const char* unit="",int precision=0);
+    void DrawCharacterUi(int character,CharacterUiPart part,const CharacterUiArgs& args={});
+    void DrawGanyuUi(CharacterUiPart part,const CharacterUiArgs& args);
+    void DrawYaeUi(CharacterUiPart part,const CharacterUiArgs& args);
+    void DrawYoimiyaUi(CharacterUiPart part,const CharacterUiArgs& args);
+    void DrawNahidaUi(CharacterUiPart part,const CharacterUiArgs& args);
+    void DrawFurinaUi(CharacterUiPart part,const CharacterUiArgs& args);
+    void DrawFaruzanUi(CharacterUiPart part,const CharacterUiArgs& args);
+    void DrawZhongliUi(CharacterUiPart part,const CharacterUiArgs& args);
     void DrawChrome(); void DrawSidebar(); void DrawPage(int page);
     void DrawAim(float x,float y,float w,float h);
     void DrawVisual(float x,float y,float w,float h);

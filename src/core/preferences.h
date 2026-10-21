@@ -81,9 +81,20 @@ inline bool PreferencesSelfTest() {
     std::mt19937 rng(73519);
     ok=(ResolveStartupTheme(p,rng)==kDarkTheme)&&ok;
     p.mode=0;ok=(ResolveStartupTheme(p,rng)==kYaeTheme)&&ok;
-    p.mode=2;bool ganyu=false,yae=false;
-    for(int i=0;i<2048;++i){int theme=ResolveStartupTheme(p,rng);ok=IsCharacterTheme(theme)&&ok;ganyu|=theme==kGanyuTheme;yae|=theme==kYaeTheme;}
-    ok=ok&&ganyu&&yae;
+    p.current=kYoimiyaTheme;p.fixed=kYoimiyaTheme;
+    ok=SavePreferences(path,p)&&LoadPreferences(path)==p&&ResolveStartupTheme(p,rng)==kYoimiyaTheme&&ok;
+    p.current=kNahidaTheme;p.fixed=kNahidaTheme;p.mode=1;
+    ok=SavePreferences(path,p)&&LoadPreferences(path)==p&&ResolveStartupTheme(p,rng)==kNahidaTheme&&ok;
+    p.current=kFurinaTheme;p.fixed=kFurinaTheme;
+    ok=SavePreferences(path,p)&&LoadPreferences(path)==p&&ResolveStartupTheme(p,rng)==kFurinaTheme&&ok;
+    p.current=kFaruzanTheme;p.fixed=kFaruzanTheme;
+    ok=SavePreferences(path,p)&&LoadPreferences(path)==p&&ResolveStartupTheme(p,rng)==kFaruzanTheme&&ok;
+    p.current=kZhongliTheme;p.fixed=kZhongliTheme;
+    ok=SavePreferences(path,p)&&LoadPreferences(path)==p&&ResolveStartupTheme(p,rng)==kZhongliTheme&&ok;
+    p.mode=2;unsigned seen=0,expected=0;
+    for(int theme=0;theme<kThemeCount;++theme)if(IsCharacterTheme(theme))expected|=1u<<theme;
+    for(int i=0;i<2048;++i){int theme=ResolveStartupTheme(p,rng);ok=IsCharacterTheme(theme)&&ok;seen|=1u<<theme;}
+    ok=ok&&seen==expected;
     ok=SavePreferences(path,p)&&ok;ok=LoadPreferences(path)==p&&ok;
     WritePrivateProfileStringW(L"appearance",L"current",L"future-missing-character",path.c_str());
     WritePrivateProfileStringW(L"appearance",L"startup",L"999",path.c_str());
