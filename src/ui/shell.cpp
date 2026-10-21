@@ -36,6 +36,52 @@ void Flower(ImDrawList* dl,ImVec2 p,float r,ImU32 col,float rotation=0.f) {
     }
     dl->AddCircle(p,r*.12f,col,12,1.f);
 }
+void Sakura(ImDrawList* dl,ImVec2 p,float r,ImU32 col,float rotation=0.f) {
+    for(int i=0;i<5;++i) {
+        float a=rotation+i*pi*.4f-pi*.5f;
+        auto pt=[&](float x,float y){return ImVec2(p.x+(cosf(a)*x-sinf(a)*y)*r,p.y+(sinf(a)*x+cosf(a)*y)*r);};
+        dl->AddBezierCubic(pt(.13f,0),pt(.65f,-.49f),pt(1.06f,-.38f),pt(.93f,-.03f),col,.9f);
+        dl->AddBezierCubic(pt(.93f,-.03f),pt(.78f,-.03f),pt(.80f,.05f),pt(1.0f,.11f),col,.9f);
+        dl->AddBezierCubic(pt(1,.11f),pt(.96f,.50f),pt(.40f,.28f),pt(.13f,0),col,.9f);
+    }
+    dl->AddCircle(p,r*.09f,col,12,.8f);
+}
+void ChineseKnot(ImDrawList* dl,ImVec2 top,float scale,float time) {
+    const float sway=sinf(time*.75f)*.018f;
+    auto p=[&](float x,float y){return ImVec2(top.x+(x*cosf(sway)-(y-13)*sinf(sway))*scale,top.y+(13+x*sinf(sway)+(y-13)*cosf(sway))*scale);};
+    const ImU32 shade=IM_COL32(65,27,49,245),silk=IM_COL32(197,67,90,255),shine=IM_COL32(250,149,144,230),gold=IM_COL32(229,195,133,240);
+    auto rope=[&](const std::vector<ImVec2>& points,float width=2.3f){
+        dl->AddPolyline(points.data(),int(points.size()),shade,0,(width+1.25f)*scale);
+        dl->AddPolyline(points.data(),int(points.size()),silk,0,width*scale);
+        std::vector<ImVec2> highlight=points;for(auto& v:highlight){v.x-=.35f*scale;v.y-=.32f*scale;}
+        dl->AddPolyline(highlight.data(),int(highlight.size()),shine,0,.55f*scale);
+    };
+    dl->AddBezierCubic(p(-1,0),p(-2,6),p(-2,10),p(0,14),gold,1.15f*scale);
+    dl->AddBezierCubic(p(1,0),p(2,6),p(2,10),p(0,14),gold,.7f*scale);
+    dl->AddCircleFilled(p(0,15),2.2f*scale,gold,12);
+    auto q=[&](float x,float y){return p((x-y)*.70710678f,31+(x+y)*.70710678f);};
+    for(int axis=0;axis<2;++axis){
+        auto v=[&](float x,float y){return axis?q(y,x):q(x,y);};
+        std::vector<ImVec2> strand;
+        auto line=[&](float x,float y){strand.push_back(v(x,y));};
+        auto curve=[&](ImVec2 a,ImVec2 b,ImVec2 c){auto start=strand.back();for(int j=1;j<=10;++j){float t=j/10.f,u=1-t;strand.push_back({u*u*u*start.x+3*u*u*t*a.x+3*u*t*t*b.x+t*t*t*c.x,u*u*u*start.y+3*u*u*t*a.y+3*u*t*t*b.y+t*t*t*c.y});}};
+        line(-7,-6);line(7,-6);curve(v(13,-6),v(13,0),v(7,0));line(-7,0);curve(v(-13,0),v(-13,6),v(-7,6));line(7,6);
+        rope(strand);
+    }
+    for(int row=0;row<3;++row)for(int col=0;col<3;++col){
+        const float x=-6.f+col*6,y=-6.f+row*6;
+        const auto a=(row+col)%2?q(x-2,y):q(x,y-2),b=(row+col)%2?q(x+2,y):q(x,y+2);
+        rope({a,b},2.2f);
+    }
+    dl->AddCircleFilled(p(0,47),2.4f*scale,silk,12);
+    dl->AddRectFilled(p(-2.5f,49),p(2.5f,53),gold,1.f*scale);
+    for(int i=0;i<9;++i){
+        const float x=(i-4)*.85f,tip=72.f-std::abs(i-4)*.65f;
+        const float drift=sinf(time*.9f+i*.12f)*.5f;
+        dl->AddBezierCubic(p(x*.50f,53),p(x,59),p(x+drift,66),p(x+drift,tip),i%3?silk:shine,.85f*scale);
+    }
+    dl->AddLine(p(-3.1f,55),p(3.1f,55),gold,.75f*scale);
+}
 void Cryo(ImDrawList* dl,ImVec2 p,float r,ImU32 col) {
     for(int i=0;i<6;i++) {
         float a=i*pi/3.f-pi*.5f,dx=cosf(a),dy=sinf(a);
@@ -48,9 +94,9 @@ void Cryo(ImDrawList* dl,ImVec2 p,float r,ImU32 col) {
 }
 }
 const ThemeTokens& Tokens(int theme) {
-    static ThemeTokens tok[3]; static bool init=false;
-    if(!init){init=true;for(int i=0;i<3;i++){const auto& s=ThemeAt(i).skin;tok[i]={ThemeAt(i).nameCn,ThemeAt(i).nameEn,Col(s.win0),Col(s.winStroke),Col(s.sidebar0),Col(s.card0),Col(s.cardStroke),Col(s.text),Col(s.text2),Col(s.text3),Col(s.accent),Col(s.accentSoft),Col(s.good),s.radius};}}
-    return tok[std::clamp(theme,0,2)];
+    static ThemeTokens tok[kThemeCount]; static bool init=false;
+    if(!init){init=true;for(int i=0;i<kThemeCount;i++){const auto& s=ThemeAt(i).skin;tok[i]={ThemeAt(i).nameCn,ThemeAt(i).nameEn,Col(s.win0),Col(s.winStroke),Col(s.sidebar0),Col(s.card0),Col(s.cardStroke),Col(s.text),Col(s.text2),Col(s.text3),Col(s.accent),Col(s.accentSoft),Col(s.good),s.radius};}}
+    return tok[std::clamp(theme,0,kThemeCount-1)];
 }
 void Shell::ApplyFonts(ImFont* ui,ImFont* display,ImFont* caps) {
     cx.fUi=cx.fSm=cx.fXs=cx.fLg=cx.fXl=ui;cx.fDisp=display;cx.fCaps=caps?caps:display;
@@ -64,11 +110,11 @@ void Shell::Layout(float sw,float sh,float uiScale) {
 void Shell::ReplayEnter() {
     entering=true;enterT=0;ready=true;
     for(int i=0;i<5;i++)pageWeight[i].Snap(m.navSel==i?1.f:0.f);
-    navPosition.Snap(float(m.navSel));ganyuMix.Snap(theme==0?1.f:0.f);wallpaperMix.Snap(m.wallpaper);
+    navPosition.Snap(float(m.navSel));ganyuMix.Snap(IsCharacterTheme(theme)?1.f:0.f);yaeMix.Snap(theme==UI_THEME_YAE?1.f:0.f);wallpaperMix.Snap(m.wallpaper);
     for(auto& w:pool)w=WState{};
 }
 void Shell::SetTheme(int tint) {
-    tint=std::clamp(tint,0,2);if(theme==tint)return;
+    tint=std::clamp(tint,0,kThemeCount-1);if(theme==tint)return;
     float e=themeT*.42f;
     themeFrom=BuildSkin(themeFrom,ThemeAt(theme).skin,Ease(E_PAGE,Clamp(e/.26f)),Ease(E_PAGE,Clamp((e-.08f)/.26f)),Ease(E_PAGE,Clamp((e-.14f)/.28f)));
     oldTheme=theme;theme=tint;themeT=0;m.themeSel=tint;
@@ -81,7 +127,9 @@ void Shell::Begin(float dt) {
     themeT=std::min(1.f,themeT+cx.dt/.42f);
     for(int i=0;i<5;i++) {pageWeight[i].Target(m.navSel==i?1.f:0.f);if(m.animations)pageWeight[i].Update(cx.dt,springs::S_CRIT);else pageWeight[i].Snap(m.navSel==i?1.f:0.f);}
     navPosition.Target(float(m.navSel));navPosition.Update(cx.dt,springs::S_UI);
-    ganyuMix.Target(theme==0?1.f:0.f);ganyuMix.Update(cx.dt,springs::S_CRIT);sceneMix=Clamp(ganyuMix.V(1));
+    ganyuMix.Target(IsCharacterTheme(theme)?1.f:0.f);ganyuMix.Update(cx.dt,springs::S_CRIT);sceneMix=Clamp(ganyuMix.V(1));
+    if(IsCharacterTheme(theme))yaeMix.Target(theme==UI_THEME_YAE?1.f:0.f);
+    yaeMix.Update(cx.dt,springs::S_CRIT);
     wallpaperMix.Target(m.wallpaper);wallpaperMix.Update(cx.dt,springs::S_CRIT);
     toastTime=std::max(0.f,toastTime-cx.dt);
 }
@@ -109,7 +157,7 @@ void Shell::Panel(int id,float x,float y,float w,float h,const char* title,const
         const float end=x+std::min(w-38.f,112.f);
         dl->AddBezierCubic(L(x+20,y+1,0,0).a,L(x+48,y+1,0,0).a,
             L(end-16,y+4,0,0).a,L(end,y+1,0,0).a,
-            IM_COL32(162,219,236,int(66*sceneMix)),Px(.8f));
+            Fade(cx.C(cx.sk.accent),.26f*sceneMix),Px(.8f));
         dl->AddCircleFilled(L(x+w-14,y+14,0,0).a,Px(1.3f),IM_COL32(209,178,126,int(100*sceneMix)),12);
     }
     Label(x+20,y+18,title,15);
@@ -129,16 +177,28 @@ void Shell::DrawChrome() {
     if(g>.001f) {
         ImU32 dark=IM_COL32(6,16,32,int(64*g)),clear=IM_COL32(6,16,32,0);
         dl->AddRectFilledMultiColor(L(176,0,176,0).a,L(W,0,W,H).b,dark,clear,clear,dark);
-        Flower(dl,L(W-45,H-74,W-45,H-74).a,Px(61),IM_COL32(176,217,235,int(28*g)),.1f);
+        if(theme==UI_THEME_YAE) {
+            Sakura(dl,L(W-51,H-78,0,0).a,Px(57),Fade(cx.C(cx.sk.accent),.15f*g),.15f);
+            for(int j=0;j<3;++j)dl->AddBezierCubic(L(W-260+j*14,H-30,0,0).a,L(W-150,H-48-j*13,0,0).a,L(W-82,H-24-j*22,0,0).a,L(W-15,H-122-j*9,0,0).a,IM_COL32(223,188,144,int(20*g)),Px(.7f));
+        }else Flower(dl,L(W-45,H-74,W-45,H-74).a,Px(61),IM_COL32(176,217,235,int(28*g)),.1f);
     }
 
-    paint::TextC(dl,cx.fCaps,Fs(9),L(W*.5f,20,W*.5f,20).a,cx.C(cx.sk.text3),theme==0?"S I N U S   U N I C O R N I S":"H A N A B I   /   S T U D I O");
+    paint::TextC(dl,cx.fCaps,Fs(9),L(W*.5f,20,W*.5f,20).a,cx.C(cx.sk.text3),theme==0?"S I N U S   U N I C O R N I S":(theme==UI_THEME_YAE?"D I V I N A   V U L P E S":"H A N A B I   /   S T U D I O"));
     for(int i=0;i<3;i++) {
         Rc r=L(W-132+i*44,0,W-88+i*44,38);
         auto& s=cx.St(1+i);s.hov.Target(cx.Hover(r)?1.f:0.f);s.hov.Update(cx.dt);
         ImVec2 p=r.c();ImU32 col=cx.C(cx.sk.text2);float z=Px(4.5f);
         const float hover=Clamp(s.hov.V());
-        if(g>.001f){
+        if(g>.001f&&theme==UI_THEME_YAE) {
+            Rc inset=r.In(Px(7),Px(5));
+            paint::Fill(dl,inset.a,inset.b,Px(7),IM_COL32(69,33,66,int((80+hover*58)*g)));
+            paint::Stroke(dl,inset.a,inset.b,Px(7),IM_COL32(236,177,215,int((50+hover*110)*g)),Px(.7f));
+            dl->AddBezierCubic({p.x-Px(12),p.y-Px(9)},{p.x-Px(7),p.y-Px(7)},{p.x+Px(7),p.y-Px(7)},{p.x+Px(12),p.y-Px(9)},IM_COL32(227,193,146,int((125+hover*90)*g)),Px(.9f));
+            col=Fade(paint::MixI(cx.C(cx.sk.accent),i==2?IM_COL32(255,160,193,255):IM_COL32(255,237,252,255),hover),g);
+            if(i==0){dl->AddLine({p.x-z,p.y+1},{p.x+z,p.y+1},col,Px(1.2f));dl->AddCircleFilled({p.x,p.y+Px(5)},Px(.8f),col);}
+            if(i==1){ImVec2 diamond[]={{p.x,p.y-z},{p.x+z,p.y},{p.x,p.y+z},{p.x-z,p.y}};dl->AddPolyline(diamond,4,col,ImDrawFlags_Closed,Px(1));}
+            if(i==2){dl->AddBezierCubic({p.x-z,p.y-z},{p.x-z*.2f,p.y-z*.2f},{p.x+z*.2f,p.y+z*.2f},{p.x+z,p.y+z},col,Px(1.2f));dl->AddLine({p.x-z,p.y+z},{p.x+z,p.y-z},col,Px(1.2f));}
+        }else if(g>.001f){
             const float half=Px(13),cut=Px(5);
             ImVec2 points[]={{p.x-half+cut,p.y-half},{p.x+half-cut,p.y-half},{p.x+half,p.y-half+cut},{p.x+half,p.y+half-cut},{p.x+half-cut,p.y+half},{p.x-half+cut,p.y+half},{p.x-half,p.y+half-cut},{p.x-half,p.y-half+cut}};
             ImU32 tint=paint::MixI(IM_COL32(151,219,240,255),i==2?IM_COL32(223,140,159,255):IM_COL32(220,238,249,255),hover);
@@ -175,13 +235,14 @@ void Shell::DrawSidebar() {
     if(g<.999f)paint::Fill(dl,emblem.a,emblem.b,Px(13),Fade(cx.C(cx.sk.accentSoft),1-g));
 
     if(g<.999f)paint::DrawIcon(dl,paint::ICON_GRID,emblem.c(),Px(18),Fade(cx.C(cx.sk.accent),1-g),Px(1.5f));
-    Label(78,59,"HanaBi",23);Label(79,87,theme==0?"循霜而行":"你的工作空间",10.5f,2);
+    Label(78,59,"HanaBi",23);Label(79,87,theme==0?"循霜而行":(theme==UI_THEME_YAE?"浮世笑百姿":"你的工作空间"),10.5f,2);
     Label(25,125,"工作空间",10.5f,2);
     Rc mark=L(14,154+navPosition.V()*54,162,200+navPosition.V()*54);
     paint::Fill(dl,mark.a,mark.b,Px(11),cx.C(cx.sk.accentSoft));
     if(g>.001f) {
         dl->AddLine(L(15,mark.a.y/scale+12,15,mark.a.y/scale+12).a,L(15,mark.a.y/scale+32,15,mark.a.y/scale+32).a,Fade(cx.C(cx.sk.accent),g),Px(2));
-        Flower(dl,L(140,mark.c().y/scale,140,mark.c().y/scale).a,Px(9),Fade(cx.C(cx.sk.accent),.5f*g));
+        if(theme==UI_THEME_YAE)Sakura(dl,L(140,mark.c().y/scale,0,0).a,Px(9),Fade(cx.C(cx.sk.accent),.5f*g));
+        else Flower(dl,L(140,mark.c().y/scale,140,mark.c().y/scale).a,Px(9),Fade(cx.C(cx.sk.accent),.5f*g));
     }
     for(int i=0;i<5;i++) {
         Rc r=L(14,154.f+float(i)*54,162,200.f+float(i)*54);auto& s=cx.St(10+i);
@@ -194,9 +255,22 @@ void Shell::DrawSidebar() {
         if(over)ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     }
     if(g>.01f) {
-        Flower(dl,L(82,H-125,82,H-125).a,Px(29),IM_COL32(188,218,232,int(90*g)),-pi*.5f);
-        Label(43,H-79,"璃月 · 海灯夜",12,1);
-        paint::TextC(dl,cx.fCaps,Fs(8.5f),L(88,H-49,88,H-49).a,Fade(cx.C(cx.sk.text3),g),"A QUIET MOMENT");
+        if(theme==UI_THEME_YAE) {
+            const auto p=L(85,H-126,0,0).a;const float z=Px(27);
+            ImU32 gold=IM_COL32(226,191,151,int(118*g));
+            auto pt=[&](float x,float y){return ImVec2(p.x+x*z,p.y+y*z);};
+            dl->AddBezierCubic(pt(-.86f,-.17f),pt(-1,-1.35f),pt(-.58f,-1.18f),pt(-.33f,-.55f),gold,Px(1));
+            dl->AddBezierCubic(pt(.86f,-.17f),pt(1,-1.35f),pt(.58f,-1.18f),pt(.33f,-.55f),gold,Px(1));
+            dl->AddBezierCubic(pt(-.86f,-.17f),pt(-.80f,.55f),pt(-.3f,.72f),pt(0,.98f),gold,Px(1));
+            dl->AddBezierCubic(pt(.86f,-.17f),pt(.80f,.55f),pt(.3f,.72f),pt(0,.98f),gold,Px(1));
+            for(int side:{-1,1})dl->AddBezierCubic(pt(side*.68f,.0f),pt(side*.55f,.15f),pt(side*.28f,.19f),pt(side*.17f,.06f),Fade(cx.C(cx.sk.accent),.7f*g),Px(1.2f));
+            Sakura(dl,pt(0,-.15f),Px(6),Fade(cx.C(cx.sk.accent),.5f*g),.3f);
+            Label(43,H-79,"稻妻 · 鸣神樱",12,1);
+        }else {
+            Flower(dl,L(82,H-125,82,H-125).a,Px(29),IM_COL32(188,218,232,int(90*g)),-pi*.5f);
+            Label(43,H-79,"璃月 · 海灯夜",12,1);
+        }
+        paint::TextC(dl,cx.fCaps,Fs(8.5f),L(88,H-49,88,H-49).a,Fade(cx.C(cx.sk.text3),g),theme==UI_THEME_YAE?"A FLEETING BLOSSOM":"A QUIET MOMENT");
     } else {
         Label(26,H-91,"HanaBi Studio",13,1);Label(26,H-65,"简单，自在，专注。",10.5f,2);
     }
@@ -382,57 +456,82 @@ void Shell::DrawMisc(float x,float y,float w,float h) {
     DrawKeys(175,xx,y+167,rw,h-167);
 }
 void Shell::DrawThemes(float x,float y,float w,float h) {
-    const char* names[]={"甘雨 · 循霜","云母 · 晨光","曜石 · 静夜"};
-    const char* subtitles[]={"海灯映雪，清心入梦。","温润纸面，轻盈有序。","收敛光线，专注此刻。"};
-    float gap=14,cw=(w-gap*2)/3.f,th=205;
-    for(int i=0;i<3;i++) {
-        float xx=x+i*(cw+gap);Rc card=L(xx,y,xx+cw,y+th);
+    const char* names[]={"甘雨 · 循霜","云母 · 晨光","曜石 · 静夜","八重神子 · 神樱"};
+    const char* subtitles[]={"海灯映雪，清心入梦。","温润纸面，轻盈有序。","收敛光线，专注此刻。","鸣神花散，浮世一梦。"};
+    constexpr int order[]={0,3,1,2};
+    float gap=14,cw=(w-gap)/2.f,th=176;
+    for(int slot=0;slot<2;slot++) {
+        const int i=order[slot];
+        float xx=x+slot*(cw+gap);Rc card=L(xx,y,xx+cw,y+128);
         auto& st=cx.St(200+i);st.hov.Target(cx.Hover(card)?1.f:0.f);st.hov.Update(cx.dt);st.act.Target(theme==i?1.f:0.f);st.act.Update(cx.dt);
-        paint::Fill(cx.dl,card.a,card.b,Px(14),cx.C(cx.sk.card0));
-        Rc preview=L(xx+8,y+8,xx+cw-8,y+123);
-        ImU32 bg=i==0?IM_COL32(19,43,68,255):(i==1?IM_COL32(235,238,242,255):IM_COL32(19,22,27,255));
-        paint::FillGrad(cx.dl,preview.a,preview.b,Px(9),bg,i==0?IM_COL32(44,80,101,255):bg);
-
+        const ImU32 accent=i==0?IM_COL32(174,228,244,255):IM_COL32(241,184,223,255);
+        paint::FillGrad(cx.dl,card.a,card.b,Px(14),i==0?IM_COL32(17,38,60,240):IM_COL32(56,28,55,240),i==0?IM_COL32(39,70,88,245):IM_COL32(85,44,73,245));
         if(i==0){
-            Flower(cx.dl,L(xx+cw-47,y+49,0,0).a,Px(29),IM_COL32(176,223,236,90),-.3f);
-            for(int j=0;j<3;j++) {float yy=y+111-j*11;cx.dl->AddBezierCubic(L(xx+12,yy,0,0).a,L(xx+cw*.4f,yy-24,0,0).a,L(xx+cw*.7f,yy+15,0,0).a,L(xx+cw-12,yy-15,0,0).a,IM_COL32(156,211,233,30+j*8),Px(1));}
-            Cryo(cx.dl,L(xx+36,y+39,0,0).a,Px(14),IM_COL32(165,230,247,230));
-            paint::Text(cx.dl,cx.fDisp,Fs(27),L(xx+21,y+64,0,0).a,IM_COL32(226,241,251,235),"Ganyu");
-            cx.dl->AddLine(L(xx+cw-25,y+18,0,0).a,L(xx+cw-25,y+46,0,0).a,IM_COL32(215,178,114,180));
-            cx.dl->AddLine(L(xx+cw-25,y+46,0,0).a,L(xx+cw-25,y+67,0,0).a,IM_COL32(167,65,87,220),Px(2));
+            Flower(cx.dl,L(xx+cw-81,y+57,0,0).a,Px(36),IM_COL32(176,223,236,90),-.3f+sinf(t*.25f)*.025f);
+            for(int j=0;j<3;j++) {float yy=y+90-j*11;cx.dl->AddBezierCubic(L(xx+12,yy,0,0).a,L(xx+cw*.4f,yy-24,0,0).a,L(xx+cw*.7f,yy+15,0,0).a,L(xx+cw-12,yy-15,0,0).a,IM_COL32(156,211,233,30+j*8),Px(1));}
+            if(drawCryo&&m.navSel==4) {
+                const float page=Clamp(pageWeight[4].V(1.f)),enter=entering?Ease(E_PAGE,Clamp(enterT/.8f)):1.f;
+                drawCryo(cx.dl,L(xx+36,y+31,0,0).a,Px(17),6.2f+t,page*enter);
+            }
+            ChineseKnot(cx.dl,L(xx+cw-29,y+12,0,0).a,scale,t);
         }else {
-            ImU32 panel=i==1?IM_COL32(255,255,255,255):IM_COL32(36,40,48,255);
-            paint::Fill(cx.dl,L(xx+20,y+21,xx+cw-20,y+111).a,L(xx+20,y+21,xx+cw-20,y+111).b,Px(6),panel);
-            paint::Fill(cx.dl,L(xx+20,y+21,xx+65,y+111).a,L(xx+20,y+21,xx+65,y+111).b,Px(6),i==1?IM_COL32(243,245,248,255):IM_COL32(28,31,37,255));
-            for(int j=0;j<3;j++)paint::Fill(cx.dl,L(xx+29,y+38+j*21,xx+54,y+43+j*21).a,L(xx+29,y+38+j*21,xx+54,y+43+j*21).b,Px(2),i==1?IM_COL32(187,197,211,255):IM_COL32(75,83,97,255));
-            paint::Fill(cx.dl,L(xx+79,y+37,xx+cw-34,y+45).a,L(xx+79,y+37,xx+cw-34,y+45).b,Px(3),i==1?IM_COL32(198,207,218,255):IM_COL32(96,110,130,255));
-            for(int j=0;j<2;j++)paint::Fill(cx.dl,L(xx+79,y+58+j*25,xx+cw-34,y+75+j*25).a,L(xx+79,y+58+j*25,xx+cw-34,y+75+j*25).b,Px(4),i==1?IM_COL32(230,236,243,255):IM_COL32(48,55,68,255));
+            Sakura(cx.dl,L(xx+cw-83,y+56,0,0).a,Px(35),IM_COL32(239,181,214,106),.1f+sinf(t*.25f)*.025f);
+            Sakura(cx.dl,L(xx+cw-125,y+27,0,0).a,Px(10),IM_COL32(227,193,149,120),-.2f);
+            if(drawElectro&&m.navSel==4) {
+                const float page=Clamp(pageWeight[4].V(1.f)),enter=entering?Ease(E_PAGE,Clamp(enterT/.8f)):1.f;
+                drawElectro(cx.dl,L(xx+36,y+31,0,0).a,Px(17),6.2f+t,page*enter);
+            }
+            for(int j=0;j<3;++j)cx.dl->AddBezierCubic(L(xx+12,y+90-j*8,0,0).a,L(xx+cw*.4f,y+51-j*7,0,0).a,L(xx+cw*.7f,y+98-j*10,0,0).a,L(xx+cw-12,y+69-j*9,0,0).a,IM_COL32(229,168,207,30+j*10),Px(.8f));
+            const ImU32 gold=IM_COL32(224,188,142,185);
+            cx.dl->AddLine(L(xx+cw-25,y+17,0,0).a,L(xx+cw-25,y+66,0,0).a,gold,Px(.8f));
+            ImVec2 charm[]={L(xx+cw-25,y+40,0,0).a,L(xx+cw-19,y+49,0,0).a,L(xx+cw-25,y+58,0,0).a,L(xx+cw-31,y+49,0,0).a};
+            cx.dl->AddPolyline(charm,4,gold,ImDrawFlags_Closed,Px(.8f));
+            cx.dl->AddLine(L(xx+cw-28,y+66,0,0).a,L(xx+cw-22,y+72,0,0).a,gold,Px(1));
+            cx.dl->AddLine(L(xx+cw-22,y+72,0,0).a,L(xx+cw-28,y+78,0,0).a,gold,Px(1));
         }
-        Label(xx+17,y+138,names[i],15);Label(xx+17,y+168,subtitles[i],10.5f,2);
-        paint::Stroke(cx.dl,card.a,card.b,Px(14),paint::MixI(cx.C(cx.sk.cardStroke),cx.C(cx.sk.accent),Clamp(st.act.V()+st.hov.V()*.28f)),Px(1+st.act.V()));
-        if(theme==i){cx.dl->AddCircleFilled(L(xx+cw-21,y+148,0,0).a,Px(8),cx.C(cx.sk.accent));paint::DrawIcon(cx.dl,paint::ICON_CHECK,L(xx+cw-21,y+148,0,0).a,Px(9),cx.C(cx.sk.sidebar0),Px(1.6f));}
+        paint::Text(cx.dl,cx.fDisp,Fs(29),L(xx+21,y+51,0,0).a,IM_COL32(247,235,247,240),i==0?"Ganyu":"Yae Miko");
+        paint::Text(cx.dl,cx.fUi,Fs(12.5f),L(xx+21,y+102,0,0).a,Fade(accent,.95f),names[i]);
+        paint::Text(cx.dl,cx.fUi,Fs(10),L(xx+154,y+104,0,0).a,Fade(accent,.60f),subtitles[i]);
+        paint::Stroke(cx.dl,card.a,card.b,Px(14),paint::MixI(Fade(accent,.22f),accent,Clamp(st.act.V()+st.hov.V()*.28f)),Px(1+st.act.V()));
+        if(theme==i){cx.dl->AddCircleFilled(L(xx+cw-23,y+106,0,0).a,Px(7),accent);paint::DrawIcon(cx.dl,paint::ICON_CHECK,L(xx+cw-23,y+106,0,0).a,Px(8),IM_COL32(45,28,47,255),Px(1.4f));}
         if(cx.Claim(200+i,card))SetTheme(i);
         if(cx.Hover(card))ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     }
-    float yy=y+th+16,hh=h-th-16,lw=(w-18)*.54f,rw=w-lw-18,xx=x+lw+18;
-    Panel(205,x,yy,lw,hh,"场景与文字",theme==0?"冰蓝绸缎 · 清心花纹":"按自己的喜好，调整空间的细节");
-    Range(206,x+20,yy+74,lw-40,"壁纸显现",m.wallpaper,.2f,1.f,"",2);
-    RowToggle(207,x+20,yy+126,lw-40,"背景流动",m.backgroundMotion);
-    RowToggle(208,x+20,yy+164,lw-40,"微光粒子",m.particles);
-    Range(209,x+20,yy+202,lw-110,"整体字号",m.fontPercent,100.f,125.f,"%");
+    for(int slot=0;slot<2;++slot) {
+        const int i=slot==0?UI_THEME_LIGHT:UI_THEME_DARK;const float xx=x+slot*(cw+gap);
+        Rc r=L(xx,y+140,xx+cw,y+176);
+        if(Button(200+i,r,slot==0?"白色 · 云母晨光":"黑色 · 曜石静夜",theme==i))SetTheme(i);
+        paint::Fill(cx.dl,L(xx+14,y+151,xx+28,y+165).a,L(xx+14,y+151,xx+28,y+165).b,Px(4),slot==0?IM_COL32(244,246,249,255):IM_COL32(30,32,39,255));
+        paint::Stroke(cx.dl,L(xx+14,y+151,xx+28,y+165).a,L(xx+14,y+151,xx+28,y+165).b,Px(4),cx.C(cx.sk.cardStroke),Px(.7f));
+    }
+    float yy=y+th+16,hh=h-th-16,lw=(w-18)*.48f,rw=w-lw-18,xx=x+lw+18;
+    Panel(205,x,yy,lw,hh,"场景与文字",theme==0?"冰蓝绸缎 · 清心花纹":(theme==UI_THEME_YAE?"绯樱薄绢 · 鸣神金饰":"按自己的喜好，调整空间的细节"));
+    Range(206,x+20,yy+72,lw-40,"壁纸显现",m.wallpaper,.2f,1.f,"",2);
+    RowToggle(207,x+20,yy+122,lw-40,"背景流动",m.backgroundMotion);
+    RowToggle(208,x+20,yy+159,lw-40,theme==UI_THEME_YAE?"落樱与微光":"微光粒子",m.particles);
+    Range(209,x+20,yy+204,lw-110,"整体字号",m.fontPercent,100.f,125.f,"%");
     m.fontPercent=std::round(m.fontPercent);
     if(Button(218,L(x+lw-82,yy+206,x+lw-20,yy+238),"默认"))m.fontPercent=112.f;
-    Panel(210,xx,yy,rw,hh,"交互与强调色");
-    RowToggle(211,xx+20,yy+54,rw-40,"流畅动效",m.animations,"连续过渡，跟随每一次操作");
-    Label(xx+20,yy+116,"强调色",12,1);
+    Panel(210,xx,yy,rw,hh,"交互与启动");
+    RowToggle(211,xx+20,yy+49,rw-40,"流畅动效",m.animations);
+    Label(xx+20,yy+91,"强调色",12,1);
     const Rgba accent[]={ThemeAt(theme).skin.accent,Hex(0x9CB9F4),Hex(0xB6A7DF),Hex(0xD3B78C)};
     for(int i=0;i<4;i++){
-        Rc r=L(xx+20+i*45,yy+145,xx+52+i*45,yy+177);
+        Rc r=L(xx+20+i*41,yy+116,xx+52+i*41,yy+146);
         cx.dl->AddCircleFilled(r.c(),Px(10),Col(accent[i]),32);
         if(m.accentSel==i)paint::Ring(cx.dl,r.c(),Px(14),cx.C(cx.sk.text2),Px(1),32);
         if(cx.Claim(214+i,r))m.accentSel=i;
         if(cx.Hover(r))ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     }
+    Label(xx+20,yy+164,"下次启动",12,1);
+    const char* modes[]={"跟随当前","指定主题","随机角色"};
+    Segment(cx,220,L(xx+20,yy+190,xx+rw-20,yy+222),m.startupMode,modes,3);
+    if(m.startupMode==1) {
+        const char* fixed[]={"甘雨","八重神子","白色","黑色"};
+        int selected=0;for(int j=0;j<4;++j)if(order[j]==m.startupTheme)selected=j;
+        Segment(cx,221,L(xx+20,yy+234,xx+rw-20,yy+266),selected,fixed,4);
+        m.startupTheme=order[selected];
+    }else Label(xx+20,yy+242,m.startupMode==2?"仅随机角色主题，不含黑色与白色":"自动记住当前主题与外观设置",10.5f,2);
 }
 void Shell::DrawPage(int page) {
     Label(204,57,navNames[page],29);

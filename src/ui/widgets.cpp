@@ -96,12 +96,12 @@ bool Slider(UiCtx& c, int id, Rc labelRow, Rc track, float& v, float vmin, float
     Rc hit(track.a.x - knobR, y - c.Px(12), track.b.x + knobR, y + c.Px(12));
     if (c.pressed && c.Hover(hit) && c.activeId < 0) c.activeId = id;
     const bool active = c.IsActive(id);
-    if (active) {
+    if (active && c.down) {
         float k = (c.mouse.x - track.a.x) / (track.w() > 0.f ? track.w() : 1.f);
         k = k < 0.f ? 0.f : (k > 1.f ? 1.f : k);
         v = vmin + k * span;
-        if (!c.down) c.activeId = -1;
     }
+    if(active && !c.down)c.activeId=-1;
     const float ratio = (v - vmin) / span;
     w.val.Target(ratio < 0.f ? 0.f : (ratio > 1.f ? 1.f : ratio));
     w.hov.Target((c.Hover(hit) && c.activeId < 0) ? 1.f : 0.f);

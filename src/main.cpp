@@ -22,6 +22,7 @@
 #include "core/display.h"
 #include "core/easing.h"
 #include "core/time.h"
+#include "core/preferences.h"
 #include "gfx/background.h"
 #include "gfx/window_motion.h"
 #include "intro/intro.h"
@@ -300,12 +301,16 @@ struct NativeWindowAnimation {
 };
 
 struct Options {
+    bool explicitTheme=false, preferenceTest=false, persist=false;
+    hb::Preferences preferences;
+    std::wstring preferencePath;
     bool capture = false, uiOnly = false, wallpaperOnly = false, exercise = false;
     bool introOnly = false;
     bool exerciseSegments = false;
     bool exerciseFonts = false;
     bool exerciseWindow = false;
     bool exerciseNativeWindow = false;
+    bool exerciseThemes = false;
     std::wstring out = L"preview\\ganyu-revision";
     int fps = 60, width = 1600, height = 900, theme = 0, iceStyle = 2, page = 0;
     float duration = 7.5f, start = 0.f, skipAt = -1.f;
@@ -325,6 +330,25 @@ struct Experience {
     ID3D11RenderTargetView* aaTarget = nullptr;
     int aaWidth = 0, aaHeight = 0;
     bool usingAA = false;
+    bool persist=false;
+    std::wstring preferencePath;
+    hb::Preferences savedPreferences, pendingPreferences;
+    float preferenceDelay=0.f;
+
+    hb::Preferences CurrentPreferences() const {
+        return {shell.theme,shell.m.startupMode,shell.m.startupTheme,shell.m.fontPercent,
+                shell.m.wallpaper,shell.m.backgroundMotion,shell.m.particles,shell.m.animations,shell.m.accentSel};
+    }
+    void PersistPreferences(float dt,bool flush=false) {
+        if(!persist)return;
+        const auto current=CurrentPreferences();
+        if(!(current==pendingPreferences)){pendingPreferences=current;preferenceDelay=0;}
+        else preferenceDelay+=dt;
+        if(!(current==savedPreferences)&&(flush||preferenceDelay>.4f)) {
+            if(hb::SavePreferences(preferencePath,current))savedPreferences=current;
+            else {shell.Notify("外观设置保存失败，请检查本机目录权限");preferenceDelay=-5.f;}
+        }
+    }
 
     void ReleaseAA() {
         if (aaTarget) { aaTarget->Release(); aaTarget = nullptr; }
@@ -366,6 +390,10 @@ struct Experience {
         }
         intro.Bind(fonts.opening, fonts.ui, fonts.caps);
         intro.material.SetStyle(options.iceStyle);
+        intro.characterTheme=options.theme;
+        if(!intro.electroMaterial.Init(dev,ctx)){Shutdown();return false;}
+        shell.drawElectro=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawElectroEmblem(dl,center,radius,time,alpha);};
+        shell.drawCryo=[this](ImDrawList* dl,ImVec2 center,float radius,float time,float alpha){intro.DrawCryoEmblem(dl,center,radius,time,alpha);};
         shell.Layout(float(w), float(h), scale);
         shell.ApplyFonts(fonts.ui, fonts.display, fonts.caps);
         shell.targetFigure=hb::LoadTexture(dev,"tex/target-figure.png");
@@ -375,7 +403,17 @@ struct Experience {
         shell.m.themeSel = options.theme;
         shell.m.navSel = options.page;
         shell.m.fontPercent=options.fontPercent;
-        if (options.uiOnly) {
+        shell.yaeMix.Snap(options.theme==hb::UI_THEME_YAE?1.f:0.f);
+        persist=options.persist;preferencePath=options.preferencePath;
+        if(persist) {
+            savedPreferences=options.preferences;
+            shell.m.startupMode=savedPreferences.mode;shell.m.startupTheme=savedPreferences.fixed;
+            shell.m.wallpaper=savedPreferences.wallpaper;shell.m.backgroundMotion=savedPreferences.motion;
+            shell.m.particles=savedPreferences.particles;shell.m.animations=savedPreferences.animations;
+            shell.m.accentSel=savedPreferences.accent;
+        }
+        pendingPreferences=CurrentPreferences();
+        if (options.uiOnly || !hb::IsCharacterTheme(options.theme)) {
             intro.finished = true;
             intro.t = hb::Intro::kDuration;
         }
@@ -395,9 +433,12 @@ struct Experience {
         } else if (shellReady) {
             shell.Begin(dt);
         }
+        PersistPreferences(dt);
     }
 
     ID3D11RenderTargetView* Draw(ID3D11RenderTargetView* rtv, float w, float h, bool wallpaperOnly) {
+        intro.electroMaterial.BeginFrame();
+        intro.material.BeginFrame();
         if (w != intro.W || h != intro.H) {
             intro.W = w; intro.H = h;
             shell.Layout(w, h, preferredScale);
@@ -408,10 +449,12 @@ struct Experience {
         usingAA = usingAA && aaTarget;
         if (usingAA) rtv = aaTarget;
         hb::Background::View view;
+        const float characterMix=std::clamp(shell.yaeMix.V(intro.characterTheme==hb::UI_THEME_YAE?1.f:0.f),0.f,1.f);
+        view.characterMix=characterMix;
         if(shellReady&&!wallpaperOnly) {
             const float k=hb::Ease(hb::E_PAGE,hb::Clamp01(shell.enterT/1.2f));
-            view.zoom=1.f+.22f*k;
-            view.focusX=.5f-.105f*k;
+            view.zoom=1.f+(.22f-.12f*characterMix)*k;
+            view.focusX=.5f+(-.105f+.165f*characterMix)*k;
             view.focusY=.5f-.015f*k;
             view.dim=(1.f-shell.wallpaperMix.V(.82f))*.65f*k;
         }
@@ -423,7 +466,9 @@ struct Experience {
             intro.dockRadius=shell.LogoRadius();
             intro.Draw(dl, ImVec2(0, 0));
             if (shellReady) shell.Draw(dl);
-            intro.DrawMark(dl, ImVec2(0, 0), shellReady ? shell.sceneMix : 1.f);
+            const float markAlpha=shellReady?shell.sceneMix:1.f;
+            intro.DrawMark(dl, ImVec2(0, 0),markAlpha*(1-characterMix));
+            intro.DrawElectroMark(dl, ImVec2(0, 0),markAlpha*characterMix);
         }
         return rtv;
     }
@@ -437,7 +482,7 @@ struct Experience {
         target->Release();
     }
 
-    void Shutdown() { shell.targetFigure.Release(); ReleaseAA(); intro.Shutdown(); bg.Shutdown(); }
+    void Shutdown() { PersistPreferences(0,true);shell.targetFigure.Release();ReleaseAA();intro.Shutdown();bg.Shutdown(); }
 };
 
 void ProbeInput(const Experience& scene, float time, float start) {
@@ -454,12 +499,12 @@ void ProbeInput(const Experience& scene, float time, float start) {
     click(2.2f,85,339);
     click(2.8f,260,473);
     click(3.1f,85,393);
-    float cw=(w-28)/3.f;
-    click(3.65f,204+cw+14+cw*.5f,210);
-    click(4.25f,204+2*(cw+14)+cw*.5f,210);
+    float cw=(w-14)/2.f;
+    click(3.65f,204+cw*.5f,294);
+    click(4.25f,204+cw+14+cw*.5f,294);
     click(4.85f,204+cw*.5f,210);
-    click(5.0f,204+cw+14+cw*.5f,210);
-    click(5.15f,204+2*(cw+14)+cw*.5f,210);
+    click(5.0f,204+cw*.5f,294);
+    click(5.15f,204+cw+14+cw*.5f,294);
     click(5.3f,204+cw*.5f,210);
     click(5.9f,85,177);
     ImGuiIO& io=ImGui::GetIO();
@@ -485,12 +530,12 @@ void ProbeSegments(const Experience& scene,float time) {
 void ProbeFonts(const Experience& scene,float time) {
     const auto& shell=scene.shell;
     const float elapsed=time-2.f;
-    const float left=(shell.W-250.f)*.54f,trackStart=224.f,trackWidth=left-110.f;
+    const float left=(shell.W-250.f)*.48f,trackStart=224.f,trackWidth=left-110.f;
     float x=-100,y=-100;bool down=false;
     if(elapsed>=.15f&&elapsed<.9f) {
-        x=trackStart+trackWidth*hb::Clamp01((elapsed-.15f)/.6f);y=591.f;down=elapsed<.85f;
+        x=trackStart+trackWidth*hb::Clamp01((elapsed-.28f)/.48f);y=562.f;down=elapsed<.85f;
     }
-    if(elapsed>=1.15f&&elapsed<1.28f){x=204.f+left-51.f;y=579.f;down=elapsed<1.21f;}
+    if(elapsed>=1.15f&&elapsed<1.28f){x=204.f+left-51.f;y=550.f;down=elapsed<1.21f;}
     auto& io=ImGui::GetIO();io.AddMousePosEvent(x*shell.scale,y*shell.scale);io.AddMouseButtonEvent(0,down);
 }
 
@@ -499,6 +544,17 @@ void ProbeWindow(const Experience& scene,float time) {
     auto& io=ImGui::GetIO();
     io.AddMousePosEvent(over?(scene.shell.W-110.f)*scene.shell.scale:-100.f,over?19.f*scene.shell.scale:-100.f);
     io.AddMouseButtonEvent(0,over&&time<2.05f);
+}
+void ProbeThemes(const Experience& scene,float time) {
+    const auto& s=scene.shell;float x=-100,y=-100;bool down=false;
+    auto click=[&](float at,float xx,float yy){if(time>=at&&time<at+.15f){x=xx;y=yy;down=time<at+.06f;}};
+    const float width=s.W-232,cw=(width-14)/2;
+    for(int j=0;j<5;++j){const int slots[]={1,2,3,0,1};int slot=slots[j];click(2.f+j*.8f,204+(slot%2)*(cw+14)+cw*.5f,slot<2?210.f:294.f);}
+    const float left=(width-18)*.48f,right=width-left-18,xx=204+left+18;
+    click(6.f,xx+right*.5f,534);click(6.6f,xx+20+(right-40)*.875f,578);
+    click(7.2f,xx+20+(right-40)*5/6,534);click(7.8f,xx+20+(right-40)/6,534);
+    click(8.4f,xx+20+(right-40)*5/6,534);
+    auto& io=ImGui::GetIO();io.AddMousePosEvent(x*s.scale,y*s.scale);io.AddMouseButtonEvent(0,down);
 }
 
 struct CaptureTiming {
@@ -590,6 +646,7 @@ int RunRenderClip(const Options& options) {
     hb::WindowSnapshot windowSnapshot;
     hb::WindowMotion windowMotion;
     bool capturedWindow=false,sawMinimized=false,returnedWindow=false;
+    unsigned visitedThemes=0;bool sawFixed=false,sawRandom=false,sawFollow=false;
     CaptureTiming timings(off.dev);
 
     for (int i = 0; i < total && ok; ++i) {
@@ -601,6 +658,7 @@ int RunRenderClip(const Options& options) {
         if (options.exerciseSegments) ProbeSegments(scene, i * dt);
         if (options.exerciseFonts) ProbeFonts(scene, i * dt);
         if (options.exerciseWindow) ProbeWindow(scene, i * dt);
+        if (options.exerciseThemes) ProbeThemes(scene,i*dt);
         ImGui::NewFrame();
         const bool motionFrame=options.exerciseWindow&&capturedWindow&&!returnedWindow;
         ID3D11RenderTargetView* drawTarget=off.rtv;
@@ -619,6 +677,9 @@ int RunRenderClip(const Options& options) {
         }
         sawLight |= scene.shell.theme == hb::UI_THEME_LIGHT;
         sawDark |= scene.shell.theme == hb::UI_THEME_DARK;
+        visitedThemes|=1u<<scene.shell.theme;
+        sawFixed|=scene.shell.m.startupMode==1&&scene.shell.m.startupTheme==hb::kDarkTheme;
+        sawRandom|=scene.shell.m.startupMode==2;sawFollow|=i*dt>7.8f&&scene.shell.m.startupMode==0;
         sawSmallFont |= scene.shell.m.fontPercent==100.f;
         sawLargeFont |= scene.shell.m.fontPercent==125.f;
         ImGui::Render();
@@ -643,6 +704,11 @@ int RunRenderClip(const Options& options) {
         if (i % 60 == 0) printf("frame %d/%d\n", i, total);
     }
     timings.Report();
+    if(options.exerciseThemes) {
+        bool themeOk=visitedThemes==((1u<<hb::kThemeCount)-1)&&sawFixed&&sawRandom&&sawFollow&&
+            scene.shell.theme==hb::kYaeTheme&&scene.shell.m.startupMode==2&&scene.shell.yaeMix.V()>.999f;
+        printf("appearance controls: visited=%u fixed=%d random=%d follow=%d %s\n",visitedThemes,sawFixed,sawRandom,sawFollow,themeOk?"PASS":"FAIL");ok=ok&&themeOk;
+    }
     printf("opening antialias: %s\n", scene.aaTarget ? "4x MSAA" : "inactive/unavailable");
 
     if (options.exercise) {
@@ -700,7 +766,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
             options.width = _wtoi(argv[++i]);
             options.height = _wtoi(argv[++i]);
         }
-        else if (wcscmp(argv[i], L"--theme") == 0 && i + 1 < argc) options.theme = _wtoi(argv[++i]);
+        else if (wcscmp(argv[i], L"--theme") == 0 && i + 1 < argc) {options.theme = _wtoi(argv[++i]);options.explicitTheme=true;}
+        else if (wcscmp(argv[i], L"--self-test-settings") == 0) options.preferenceTest=true;
         else if (wcscmp(argv[i], L"--page") == 0 && i + 1 < argc) options.page = _wtoi(argv[++i]);
         else if (wcscmp(argv[i], L"--ice-style") == 0 && i + 1 < argc) options.iceStyle = _wtoi(argv[++i]);
         else if (wcscmp(argv[i], L"--duration") == 0 && i + 1 < argc) options.duration = float(_wtof(argv[++i]));
@@ -714,16 +781,25 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
         else if (wcscmp(argv[i], L"--exercise-fonts") == 0) options.exerciseFonts = true;
         else if (wcscmp(argv[i], L"--exercise-window") == 0) options.exerciseWindow = true;
         else if (wcscmp(argv[i], L"--exercise-native-window") == 0) options.exerciseNativeWindow = true;
+        else if (wcscmp(argv[i], L"--exercise-themes") == 0) {options.exerciseThemes=true;options.uiOnly=true;options.page=4;}
         else if (wcscmp(argv[i], L"--font-percent") == 0 && i + 1 < argc) options.fontPercent=float(_wtof(argv[++i]));
     }
     if (argv) LocalFree(argv);
     if(options.exerciseNativeWindow)options.uiOnly=true;
     if (options.fps < 20 || options.fps > 240 || options.width < 320 || options.height < 240 ||
-        options.width > 7680 || options.height > 4320 || options.theme < 0 || options.theme >= 3 || options.page < 0 || options.page > 4 || options.iceStyle < 0 || options.iceStyle > 2 ||
+        options.width > 7680 || options.height > 4320 || options.theme < 0 || options.theme >= hb::kThemeCount || options.page < 0 || options.page > 4 || options.iceStyle < 0 || options.iceStyle > 2 ||
         !std::isfinite(options.fontPercent) || options.fontPercent<100.f || options.fontPercent>125.f ||
         !std::isfinite(options.duration) || options.duration < 0.f || options.duration > 60.f ||
         !std::isfinite(options.start) || options.start < 0.f || options.start > 60.f) return 2;
     if (options.capture) return RunRenderClip(options);
+    if(options.preferenceTest)return hb::PreferencesSelfTest()?0:1;
+    if(!options.exerciseNativeWindow&&!options.introOnly) {
+        options.persist=true;options.preferencePath=hb::PreferencePath();
+        options.preferences=hb::LoadPreferences(options.preferencePath);
+        std::mt19937 rng(std::random_device{}());
+        if(!options.explicitTheme)options.theme=hb::ResolveStartupTheme(options.preferences,rng);
+        options.fontPercent=options.preferences.font;
+    }
 
     ImGui_ImplWin32_EnableDpiAwareness();
     const int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);

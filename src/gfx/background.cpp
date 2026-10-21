@@ -29,6 +29,8 @@ Texture2D phaseMap : register(t4);
 Texture2D shakeOpacity : register(t5);
 Texture2D waveA : register(t6);
 Texture2D waveB : register(t7);
+Texture2D yaeImage : register(t8);
+Texture2D overlayImage : register(t9);
 SamplerState linearClamp : register(s0);
 cbuffer Params : register(b0) {
     float4 frame;
@@ -36,7 +38,7 @@ cbuffer Params : register(b0) {
     float4 source;
 };
 float4 Original(float2 uv) {
-    return float4(baseImage.SampleLevel(linearClamp, uv, 0).rgb,
+    return float4(overlayImage.SampleLevel(linearClamp, uv, 0).rgb,
                   overlayAlpha.SampleLevel(linearClamp, uv, 0).r);
 }
 float2 WaveUV(float2 uv, float direction, float scale, float speed, float strength, float mask) {
@@ -46,6 +48,7 @@ float2 WaveUV(float2 uv, float direction, float scale, float speed, float streng
     return uv + sin(phase) * float2(d.y, -d.x) * strength * strength * mask;
 }
 float4 main(float4 pos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET {
+    if(frame.w>3.5)return yaeImage.SampleLevel(linearClamp,uv,0);
     if (frame.w < .5) {
 
         float phase = phaseMap.SampleLevel(linearClamp, uv, 0).r * 6.283185307;
@@ -78,6 +81,12 @@ float4 main(float4 pos : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET {
     float3 light = lerp(base, blurred.rgb, blurred.a);
     float brightness = max(light.r, max(light.g, light.b));
     color += light * saturate((brightness - .65) / .35) * .2;
+    if(source.z > .0001) {
+        float3 sakura = yaeImage.SampleLevel(linearClamp,p,0).rgb;
+        float shaft = pow(saturate(sin((p.x+p.y*.32)*14+sin(frame.z*.17)*.25)),12);
+        sakura += float3(.050,.028,.043)*shaft*(.6+.4*sin(frame.z*.3));
+        color = lerp(color,sakura,source.z);
+    }
     float luma = dot(color, float3(.299, .587, .114));
     color = lerp(luma.xxx, color, source.y) * (1 - saturate(view.x));
     return float4(saturate(color), 1);
@@ -116,9 +125,11 @@ float Hash(int i, int j) {
 bool Background::Init(ID3D11Device* dev, ID3D11DeviceContext* ctx, const std::string& path) {
     dev_ = dev; ctx_ = ctx;
     base_ = LoadTexture(dev, path);
+    yae_=LoadTexture(dev,"tex/yae-bg-4k.jpg");
+    overlay_=LoadTexture(dev,"tex/ganyu-overlay.jpg");
     const char* names[] = {"ganyu-overlay-alpha.png", "ganyu-flow-rg.png", "ganyu-phase.png",
                           "ganyu-shake-opacity.png", "ganyu-wave-a.png", "ganyu-wave-b.png"};
-    bool ok = base_.Valid();
+    bool ok = base_.Valid() && yae_.Valid() && overlay_.Valid() && character_.Init(dev,ctx);
     for (int i = 0; i < 6; ++i) {
         masks_[i] = LoadTexture(dev, std::string("tex/") + names[i]);
         ok = ok && masks_[i].Valid();
@@ -166,7 +177,7 @@ bool Background::BuildPipeline() {
 bool Background::BuildTargets(int w, int h) {
     if (targets_[0].image.w == w && targets_[0].image.h == h &&
         targets_[0].rtv && targets_[0].image.Valid() &&
-        targets_[1].rtv && targets_[1].image.Valid()) return true;
+        targets_[1].rtv && targets_[1].image.Valid() && targets_[2].rtv && targets_[2].image.Valid()) return true;
     ctx_->OMSetRenderTargets(0, nullptr, nullptr);
     ID3D11ShaderResourceView* empty[8]{};
     ctx_->PSSetShaderResources(0, 8, empty);
@@ -208,10 +219,22 @@ void Background::Render(ID3D11RenderTargetView* rtv, float w, float h, float t, 
     ctx_->PSSetShader(ps_, nullptr, 0);
     ctx_->PSSetConstantBuffers(0, 1, &cb_);
     ctx_->PSSetSamplers(0, 1, &samp_);
-    for (int pass = 0; pass < 4; ++pass) {
+    if(v.characterMix>.0001f){
+        ID3D11ShaderResourceView* empty[10]{};ctx_->PSSetShaderResources(0,10,empty);
+        ctx_->OMSetRenderTargets(1,&targets_[2].rtv,nullptr);
+        D3D11_VIEWPORT viewport{0,0,float(effectW),float(effectH),0,1};ctx_->RSSetViewports(1,&viewport);
+        const float params[]={w,h,t,4,v.dim,v.zoom,v.focusX,v.focusY,float(base_.w)/base_.h,v.sat,v.characterMix,0};
+        D3D11_MAPPED_SUBRESOURCE map{};if(FAILED(ctx_->Map(cb_,0,D3D11_MAP_WRITE_DISCARD,0,&map)))return;memcpy(map.pData,params,sizeof(params));ctx_->Unmap(cb_,0);
+        ctx_->PSSetShaderResources(8,1,&yae_.srv);ctx_->Draw(3,0);
+        character_.Draw(t);
+        ctx_->OMSetRenderTargets(0,nullptr,nullptr);ctx_->PSSetShaderResources(0,10,empty);
+        ctx_->GenerateMips(targets_[2].image.srv);
+        ctx_->IASetInputLayout(nullptr);ctx_->VSSetShader(vs_,nullptr,0);ctx_->PSSetShader(ps_,nullptr,0);ctx_->PSSetConstantBuffers(0,1,&cb_);ctx_->PSSetSamplers(0,1,&samp_);ctx_->OMSetBlendState(nullptr,nullptr,0xffffffff);
+    }
+    for (int pass = v.characterMix >= .9999f ? 3 : 0; pass < 4; ++pass) {
         const int outIndex = pass % 2;
-        ID3D11ShaderResourceView* empty[8]{};
-        ctx_->PSSetShaderResources(0, 8, empty);
+        ID3D11ShaderResourceView* empty[10]{};
+        ctx_->PSSetShaderResources(0, 10, empty);
         ID3D11RenderTargetView* target = pass == 3 ? rtv : targets_[outIndex].rtv;
         ctx_->OMSetRenderTargets(1, &target, nullptr);
         const float tw = pass == 3 ? w : float(effectW);
@@ -219,24 +242,24 @@ void Background::Render(ID3D11RenderTargetView* rtv, float w, float h, float t, 
         D3D11_VIEWPORT viewport{0, 0, tw, th, 0, 1};
         ctx_->RSSetViewports(1, &viewport);
         float params[12] = {w, h, t, float(pass), v.dim, v.zoom, v.focusX, v.focusY,
-                            float(base_.w) / base_.h, v.sat, 0, 0};
+                            float(base_.w) / base_.h, v.sat, v.characterMix, 0};
         D3D11_MAPPED_SUBRESOURCE map{};
         if (FAILED(ctx_->Map(cb_, 0, D3D11_MAP_WRITE_DISCARD, 0, &map))) return;
         memcpy(map.pData, params, sizeof(params)); ctx_->Unmap(cb_, 0);
-        ID3D11ShaderResourceView* resources[8] = {
+        ID3D11ShaderResourceView* resources[10] = {
             pass ? targets_[(pass - 1) % 2].image.srv : base_.srv, base_.srv,
-            masks_[0].srv, masks_[1].srv, masks_[2].srv, masks_[3].srv, masks_[4].srv, masks_[5].srv
+            masks_[0].srv, masks_[1].srv, masks_[2].srv, masks_[3].srv, masks_[4].srv, masks_[5].srv,targets_[2].image.srv,overlay_.srv
         };
-        ctx_->PSSetShaderResources(0, 8, resources);
+        ctx_->PSSetShaderResources(0, 10, resources);
         ctx_->Draw(3, 0);
         if (pass == 2) {
             ctx_->OMSetRenderTargets(0, nullptr, nullptr);
-            ctx_->PSSetShaderResources(0, 8, empty);
+            ctx_->PSSetShaderResources(0, 10, empty);
             ctx_->GenerateMips(targets_[0].image.srv);
         }
     }
-    ID3D11ShaderResourceView* empty[8]{};
-    ctx_->PSSetShaderResources(0, 8, empty);
+    ID3D11ShaderResourceView* empty[10]{};
+    ctx_->PSSetShaderResources(0, 10, empty);
 }
 
 void Background::DrawParticles(ImDrawList* dl, float w, float h, float t, const View& v) const {
@@ -249,6 +272,21 @@ void Background::DrawParticles(ImDrawList* dl, float w, float h, float t, const 
     constexpr float origins[4][2] = {{169.72144f, 548.18933f}, {739.14343f, 1634.87567f},
                                     {1830.05762f, 1738.57819f}, {3082.74438f, 1650.83331f}};
     dl->PushClipRect(ImVec2(0, 0), ImVec2(w, h), true);
+    if(v.characterMix>.001f) {
+        for(int i=0;i<32;++i) {
+            const float depth=.35f+.65f*Hash(i,30),life=16.f+Hash(i,31)*15.f;
+            const float age=std::fmod(t+Hash(i,32)*life,life),u=age/life;
+            const float x=std::fmod(Hash(i,33)+u*.18f+std::sin(t*.17f+i)*.025f+1.f,1.f)*w;
+            const float y=(-.08f+u*1.16f)*h;
+            const float a=Smoothstep(0,.08f,u)*(1-Smoothstep(.88f,1,u))*v.characterMix*(1-v.dim);
+            const float r=(3.f+depth*4.f)*w/1600.f,turn=t*(.35f+Hash(i,34)*.5f)+i;
+            auto pt=[&](float px,float py){return ImVec2(x+(cosf(turn)*px-sinf(turn)*py)*r,y+(sinf(turn)*px+cosf(turn)*py)*r);};
+            const ImU32 col=IM_COL32(255,195+int(depth*30),228,int(a*(80+depth*65)));
+            dl->PathLineTo(pt(-1,0));dl->PathBezierCubicCurveTo(pt(-.7f,-1.15f),pt(.4f,-.9f),pt(1,0));
+            dl->PathBezierCubicCurveTo(pt(.1f,.8f),pt(-.5f,.7f),pt(-1,0));dl->PathFillConvex(col);
+            if(i%4==0)Particle(dl,{x,y},r*4,0xDC92ED,a*.065f);
+        }
+    }
     for (int emitter = 0; emitter < 4; ++emitter) {
         for (int i = 0; i < 24; ++i) {
             const int seed = i + emitter * 37;
@@ -263,7 +301,7 @@ void Background::DrawParticles(ImDrawList* dl, float w, float h, float t, const 
             const float radius = (5.f + Hash(seed, 7) * 20.f) * 1.5f * cover;
             const float twinkle = .55f + .35f * std::sin(t * (3.f + Hash(seed, 8) * 4.f) + seed);
             Particle(dl, screen(x, y), radius, emitter == 3 ? 0x2252C1 : 0x163FFB,
-                     a * twinkle * .62f * (1.f - v.dim));
+                     a * twinkle * .62f * (1.f - v.dim)*(1-v.characterMix));
         }
     }
     for (int i = 0; i < 6; ++i) {
@@ -274,7 +312,7 @@ void Background::DrawParticles(ImDrawList* dl, float w, float h, float t, const 
         const float y = 920.54199f + (Hash(i, 13) - .5f) * 614.f - age * 18.f;
         const float a = Smoothstep(0.f, .1f, u) * (1.f - Smoothstep(.65f, 1.f, u));
         Particle(dl, screen(x, y), (7.f + Hash(i, 14) * 12.f) * cover, 0xF4C585,
-                 a * .38f * (1.f - v.dim));
+                 a * .38f * (1.f - v.dim)*(1-v.characterMix));
     }
     dl->PopClipRect();
 }
@@ -282,6 +320,7 @@ void Background::DrawParticles(ImDrawList* dl, float w, float h, float t, const 
 void Background::Shutdown() {
     valid_ = false;
     base_.Release();
+    yae_.Release();overlay_.Release();character_.Shutdown();
     for (auto& mask : masks_) mask.Release();
     for (auto& target : targets_) {
         if (target.rtv) { target.rtv->Release(); target.rtv = nullptr; }

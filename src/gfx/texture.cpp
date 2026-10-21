@@ -56,10 +56,14 @@ bool LoadImageMono(const std::string& path, std::vector<uint8_t>& out, int& w, i
 }
 
 Texture LoadTexture(ID3D11Device* dev, const std::string& path) {
+    const auto asset=LoadAsset(path.c_str());
+    return LoadTexture(dev,asset.data,asset.size);
+}
+Texture LoadTexture(ID3D11Device* dev, const void* bytes, size_t size) {
     Texture t;
     std::vector<uint8_t> px;
     int w = 0, h = 0;
-    if (!LoadImageRGBA(path, px, w, h)) return t;
+    if (size>INT_MAX||!DecodeRGBA(static_cast<const unsigned char*>(bytes),int(size),px,w,h)) return t;
 
     D3D11_TEXTURE2D_DESC d{};
     d.Width = (UINT)w;

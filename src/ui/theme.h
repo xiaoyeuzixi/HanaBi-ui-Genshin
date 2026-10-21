@@ -39,11 +39,15 @@ struct ThemeDef {
     const char* nameEn;
     const char* tag;
     Skin skin;
+    const char* key;
+    bool character;
 };
 
-constexpr int kThemeCount = 3;
+constexpr int kThemeCount = 4;
+constexpr int kGanyuTheme = 0, kLightTheme = 1, kDarkTheme = 2, kYaeTheme = 3;
 
 const ThemeDef& ThemeAt(int i);
+inline bool IsCharacterTheme(int i) { return i >= 0 && i < kThemeCount && ThemeAt(i).character; }
 
 Skin MixSkin(const Skin& a, const Skin& b, float t);
 

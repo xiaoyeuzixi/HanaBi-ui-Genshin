@@ -17,6 +17,7 @@ struct Texture {
 };
 
 Texture LoadTexture(ID3D11Device* dev, const std::string& path);
+Texture LoadTexture(ID3D11Device* dev, const void* bytes, size_t size);
 
 bool LoadImageRGBA(const std::string& path, std::vector<uint8_t>& out, int& w, int& h);
 

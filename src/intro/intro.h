@@ -2,6 +2,8 @@
 #include <cstdint>
 #include "imgui.h"
 #include "intro/crystal_material.h"
+#include "gfx/texture.h"
+#include "intro/electro_material.h"
 
 namespace hb {
 struct Intro {
@@ -18,21 +20,30 @@ struct Intro {
     float W = 1600.f, H = 900.f;
     ImFont* fBrand = nullptr;
     CrystalMaterial material;
+    ElectroMaterial electroMaterial;
+    float energyTime=0.f;
+    int characterTheme=0;
     struct MarkPose { ImVec2 center; float radius, opacity; };
     ImVec2 dockCenter{45.f,79.f};
     float dockRadius=16.f;
-    void Shutdown() { material.Shutdown(); }
+    void Shutdown() { material.Shutdown(); electroMaterial.Shutdown(); }
     void Reset(float w, float h);
     void Bind(ImFont* brand, ImFont*, ImFont*) { fBrand = brand; }
     void Update(float dt);
     void Draw(ImDrawList* dl, ImVec2 origin);
     void DrawMark(ImDrawList* dl, ImVec2 origin, float alpha=1.f);
+    void DrawElectroMark(ImDrawList* dl, ImVec2 origin, float alpha=1.f);
+    void DrawElectroEmblem(ImDrawList*,ImVec2,float,float,float);
+    void DrawCryoEmblem(ImDrawList*,ImVec2,float,float,float);
+    MarkPose ElectroPose(ImVec2 origin) const;
+    void DrawElectroAtmosphere(ImDrawList* dl, ImVec2 origin);
     MarkPose Pose(ImVec2 origin) const;
     void Skip();
     float Progress() const;
     float HandoffK() const;
     bool CurtainDone() const { return finished; }
 private:
+    void DrawBrand(ImDrawList* dl, ImVec2 origin);
     float skipElapsed = 0.f, skipStart = 0.f;
     float Opacity() const;
 };

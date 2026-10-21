@@ -164,10 +164,30 @@ Skin MakeObsidian() {
     return s;
 }
 
+Skin MakeYae() {
+    Skin s = MakeGanyu();
+    s.backdrop0=C(0x231326,30); s.backdrop1=C(0x35192D,40);
+    s.win0=C(0x30192F,18); s.win1=C(0x27142B,38);
+    s.sidebar0=C(0x301C35,161); s.sidebar1=C(0x241328,197);
+    s.winStroke=C(0xE6B4D7,62); s.hairline=C(0xEDC9A3,38);
+    s.card0=C(0x3E2541,122); s.card1=C(0x2C1934,154);
+    s.cardStroke=C(0xF1C1DD,53); s.cardInnerHi=C(0xFFE9F6,28);
+    s.text=C(0xFFF0F8,255); s.text2=C(0xE7CBDF,255); s.text3=C(0xBE9DB9,255);
+    s.accent=C(0xF2B8DF,255); s.accent2=C(0xBA90F5,255);
+    s.accentSoft=C(0xE6A1D0,37); s.accentGlow=C(0xC978F0,118);
+    s.trackOn0=s.accent; s.trackOn1=s.accent2;
+    s.segTrack=C(0x1F102B,76); s.segPill=C(0xE8B5D7,37);
+    s.field0=C(0xFCE5F6,14); s.fieldStroke=C(0xE3BED5,30);
+    s.good=C(0xD8C19A,255); s.warn=C(0xF0C995,255);
+    s.cardRadius=12.f; s.radius=18.f;
+    return s;
+}
+
 ThemeDef g_defs[kThemeCount] = {
-    {"甘雨", "GANYU", "CRYO", MakeGanyu()},
-    {"云母", "MICA", "LIGHT", MakeMica()},
-    {"曜石", "OBSIDIAN", "DARK", MakeObsidian()},
+    {"甘雨", "GANYU", "CRYO", MakeGanyu(), "ganyu", true},
+    {"云母", "MICA", "LIGHT", MakeMica(), "light", false},
+    {"曜石", "OBSIDIAN", "DARK", MakeObsidian(), "dark", false},
+    {"八重神子", "YAE MIKO", "ELECTRO", MakeYae(), "yae", true},
 };
 
 inline Rgba MixC(const Rgba& a, const Rgba& b, float t) { return MixLinear(a, b, t); }

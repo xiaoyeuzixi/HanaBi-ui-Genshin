@@ -3,10 +3,11 @@
 #include "ui/theme.h"
 #include "ui/ui_ctx.h"
 #include "gfx/texture.h"
+#include <functional>
 
 namespace hb {
-enum UiTheme { UI_THEME_GANYU=0, UI_THEME_LIGHT=1, UI_THEME_DARK=2 };
-constexpr int kUiThemeCount=3;
+enum UiTheme { UI_THEME_GANYU=0, UI_THEME_LIGHT=1, UI_THEME_DARK=2, UI_THEME_YAE=3 };
+constexpr int kUiThemeCount=kThemeCount;
 struct ThemeTokens {
     const char* nameCn; const char* nameEn;
     ImU32 winFill,winStroke,sidebarFill,cardFill,cardStroke,text,text2,text3,accent,accentSoft,good;
@@ -26,6 +27,7 @@ struct UiModel {
     bool backgroundMotion=true,particles=true,animations=true;
     float wallpaper=.82f;
     float fontPercent=112.f;
+    int startupMode=0, startupTheme=0;
 };
 struct Shell {
     int theme=0,oldTheme=0; Skin themeFrom=ThemeAt(0).skin; float themeT=1.f;
@@ -33,8 +35,10 @@ struct Shell {
     float W=1050,H=680,scale=1,originX=0,originY=0,screenW=1050,screenH=680,centerX=525,centerY=340;
     UiModel m;
     Texture targetFigure;
+    std::function<void(ImDrawList*,ImVec2,float,float,float)> drawElectro;
+    std::function<void(ImDrawList*,ImVec2,float,float,float)> drawCryo;
     UiCtx cx; WState pool[kMaxWid];
-    Smooth pageWeight[5],navPosition,ganyuMix,wallpaperMix;
+    Smooth pageWeight[5],navPosition,ganyuMix,yaeMix,wallpaperMix;
     float sceneMix=1.f;
     int windowAction=0;
     int recording=-1; bool presetsSaved[3]{}; UiModel presets[3];

@@ -277,7 +277,7 @@ bool CrystalMaterial::Init(ID3D11Device* device, ID3D11DeviceContext* context) {
 void CrystalMaterial::Shutdown() {
     Release(vs_);Release(ps_);Release(layout_);Release(vertices_);Release(params_);
     Release(sampler_);Release(raster_);Release(blend_);Release(depth_);
-    Release(sceneView_);Release(scene_);width_=height_=0;pending_.clear();
+    Release(sceneView_);Release(scene_);width_=height_=0;requests_.clear();
     device_=nullptr;context_=nullptr;
 }
 bool CrystalMaterial::Snapshot(ID3D11Texture2D* target) {
@@ -295,17 +295,17 @@ bool CrystalMaterial::Snapshot(ID3D11Texture2D* target) {
 }
 void CrystalMaterial::Queue(ImDrawList* list,std::vector<CrystalVertex>&& vertices,
                             ImVec2 center,float radius,float time,float dissolve,ImVec2 lantern) {
-    pending_=std::move(vertices);center_=center;radius_=radius;time_=time;dissolve_=dissolve;
-    lantern_=lantern;
-    if(!ps_||pending_.empty())return;
-    list->AddCallback(Callback,this);
+    if(!ps_||vertices.empty())return;
+    requests_.push_back({this,std::move(vertices),center,lantern,radius,time,dissolve});
+    list->AddCallback(Callback,&requests_.back());
     list->AddCallback(ImDrawCallback_ResetRenderState,nullptr);
 }
 void CrystalMaterial::Callback(const ImDrawList*,const ImDrawCmd* cmd) {
-    static_cast<CrystalMaterial*>(cmd->UserCallbackData)->Render();
+    const auto& request=*static_cast<const Request*>(cmd->UserCallbackData);
+    request.owner->Render(request);
 }
-void CrystalMaterial::Render() {
-    if(pending_.size()>kMaxVertices)return;
+void CrystalMaterial::Render(const Request& r) {
+    if(r.vertices.size()>kMaxVertices)return;
     ID3D11RenderTargetView* target=nullptr; ID3D11DepthStencilView* depth=nullptr;
     context_->OMGetRenderTargets(1,&target,&depth);
     if(!target){Release(depth);return;}
@@ -317,9 +317,9 @@ void CrystalMaterial::Render() {
     if(!ready)return;
     D3D11_MAPPED_SUBRESOURCE mapped{};
     if(FAILED(context_->Map(vertices_,0,D3D11_MAP_WRITE_DISCARD,0,&mapped)))return;
-    memcpy(mapped.pData,pending_.data(),pending_.size()*sizeof(CrystalVertex));context_->Unmap(vertices_,0);
-    const float params[]={float(width_),float(height_),radius_,time_,dissolve_,center_.x,center_.y,0,
-                          lantern_.x,lantern_.y,float(style_),0};
+    memcpy(mapped.pData,r.vertices.data(),r.vertices.size()*sizeof(CrystalVertex));context_->Unmap(vertices_,0);
+    const float params[]={float(width_),float(height_),r.radius,r.time,r.dissolve,r.center.x,r.center.y,0,
+                          r.lantern.x,r.lantern.y,float(style_),0};
     if(FAILED(context_->Map(params_,0,D3D11_MAP_WRITE_DISCARD,0,&mapped)))return;
     memcpy(mapped.pData,params,sizeof(params));context_->Unmap(params_,0);
     UINT stride=sizeof(CrystalVertex),offset=0;
@@ -330,7 +330,7 @@ void CrystalMaterial::Render() {
     context_->PSSetShaderResources(0,1,&sceneView_);context_->PSSetSamplers(0,1,&sampler_);
     context_->RSSetState(raster_);context_->OMSetDepthStencilState(depth_,0);
     const float factors[4]={0,0,0,0};context_->OMSetBlendState(blend_,factors,0xffffffff);
-    context_->Draw(UINT(pending_.size()),0);
+    context_->Draw(UINT(r.vertices.size()),0);
     ID3D11ShaderResourceView* none=nullptr;context_->PSSetShaderResources(0,1,&none);
 }
 }

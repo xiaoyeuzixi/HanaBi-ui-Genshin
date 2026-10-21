@@ -31,6 +31,9 @@ const Entry kEntries[] = {
     {L"tex/ganyu-wave-b.png", L"TEX_GANYU_WAVE_B"},
     {L"tex/ganyu-overlay-alpha.png", L"TEX_GANYU_OVERLAY_ALPHA"},
     {L"tex/target-figure.png", L"TEX_TARGET_FIGURE"},
+    {L"tex/yae-bg-4k.jpg", L"TEX_YAE_BG"},
+    {L"tex/yae-character.hbc", L"TEX_YAE_CHARACTER"},
+    {L"tex/ganyu-overlay.jpg", L"TEX_GANYU_OVERLAY"},
 };
 
 const int kCount = (int)(sizeof(kEntries) / sizeof(kEntries[0]));

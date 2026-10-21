@@ -1,4 +1,5 @@
 #include "intro/intro.h"
+#include "intro/electro_geometry.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -504,7 +505,7 @@ void IceFinish(ImDrawList* dl,ImVec2 c,float r,float t,float alpha) {
 }
 
 void Intro::Reset(float w,float h) {
-    t=0;finished=false;skipped=false;skipElapsed=0;W=std::max(w,1.f);H=std::max(h,1.f);
+    t=0;energyTime=0;finished=false;skipped=false;skipElapsed=0;W=std::max(w,1.f);H=std::max(h,1.f);
     uint32_t seed=0x85A16B3Du;
     for(auto& p:snow)p={Random(seed),Random(seed),.0005f+Random(seed)*.0013f,Random(seed),Random(seed)*tau};
     for(int i=0;i<kLantCount;++i) {
@@ -517,6 +518,7 @@ void Intro::Reset(float w,float h) {
 }
 void Intro::Skip(){if(finished||skipped)return;skipped=true;skipStart=t;skipElapsed=0;}
 void Intro::Update(float dt) {
+    energyTime+=std::clamp(dt,0.f,.20f);
     if(finished)return;dt=std::clamp(dt,0.f,.20f);
     if(skipped){
 
@@ -541,6 +543,7 @@ Intro::MarkPose Intro::Pose(ImVec2 o)const {
 }
 void Intro::Draw(ImDrawList* dl,ImVec2 o) {
     if(!dl||finished)return;
+    if(characterTheme==3){DrawElectroAtmosphere(dl,o);DrawBrand(dl,o);return;}
     const float fade=Opacity(),s=std::min(W,H);
     dl->PushClipRect(o,{o.x+W,o.y+H},true);
 
@@ -561,22 +564,34 @@ void Intro::Draw(ImDrawList* dl,ImVec2 o) {
         const ImVec2 c{o.x+x*W,o.y+y*H};
         dl->AddLine(c,{c.x+s*p.size*.45f,c.y-s*p.size*1.8f},Color(0xD0EBF3,a),std::max(.65f,s*p.size*.45f));
     }
+    dl->PopClipRect();
+    DrawBrand(dl,o);
+}
+void Intro::DrawBrand(ImDrawList* dl,ImVec2 o) {
     if(fBrand) {
-        const float reveal=S(t,3.75f,4.45f)*(1.f-S(t,4.90f,5.70f))*fade;
+        const float s=std::min(W,H);
+        const float reveal=S(t,.45f,1.25f)*(1.f-S(t,4.90f,5.70f))*Opacity();
         const float fs=20.f,tracking=4.f,margin=std::clamp(s*.055f,24.f,48.f);
         constexpr char title[]="HANABI";
         float width=tracking*5.f;
         for(int j=0;j<6;++j)width+=fBrand->CalcTextSizeA(fs,FLT_MAX,0,title+j,title+j+1).x;
         const float y=std::round(o.y+H-margin-fs);
         float x=std::round(o.x+W-margin-width);
-        dl->AddLine({x-35.f,y+fs*.55f},{x-14.f,y+fs*.55f},Color(0xD0E5F2,reveal*.38f),1.f);
+        const unsigned tint=characterTheme==3?0xEBC9F5:0xD0E5F2;
+        dl->PushClipRect(o,{o.x+W,o.y+H},true);
         for(int j=0;j<6;++j) {
             dl->AddText(fBrand,fs,{x,y+1.f},Color(0x000000,reveal*.16f),title+j,title+j+1);
-            dl->AddText(fBrand,fs,{x,y},Color(0xD0E5F2,reveal*.90f),title+j,title+j+1);
+            dl->AddText(fBrand,fs,{x,y},Color(tint,reveal*.90f),title+j,title+j+1);
             x+=fBrand->CalcTextSizeA(fs,FLT_MAX,0,title+j,title+j+1).x+tracking;
         }
+        dl->PopClipRect();
     }
-    dl->PopClipRect();
+}
+void Intro::DrawCryoEmblem(ImDrawList* dl,ImVec2 center,float radius,float time,float alpha) {
+    if(!dl||alpha<.001f)return;
+    auto vertices=SettledCrystal();
+    for(auto& vertex:vertices){vertex.x=center.x+vertex.x*radius;vertex.y=center.y+vertex.y*radius;vertex.opacity*=alpha;}
+    material.Queue(dl,std::move(vertices),center,radius,time,0.f,{center.x+radius*2,center.y-radius*3});
 }
 void Intro::DrawMark(ImDrawList* dl,ImVec2 o,float alpha) {
     if(!dl||alpha<.001f)return;
@@ -631,7 +646,7 @@ void Intro::DrawMark(ImDrawList* dl,ImVec2 o,float alpha) {
     dl->PopClipRect();
 }
 bool IntroSelfTest(char* out,int cap) {
-    bool ok=!Crystal().empty();
+    bool ok=!Crystal().empty()&&electro::SelfTest();
     float frontArea=0,minDepth=1,maxDepth=0;
     for(const Face& f:Crystal()) {
         const V3 normal=Cross(f.p[1]-f.p[0],f.p[2]-f.p[0]);
@@ -674,6 +689,9 @@ bool IntroSelfTest(char* out,int cap) {
         const auto settled=test.Pose({0,0});
         ok&=std::abs(end.center.x-test.dockCenter.x)<.0001f&&std::abs(end.center.y-test.dockCenter.y)<.0001f;
         ok&=std::abs(end.radius-test.dockRadius)<.0001f&&settled.radius==end.radius;
+        test.t=Intro::kDuration;
+        const auto electroEnd=test.ElectroPose({0,0});
+        ok&=std::abs(electroEnd.center.x-test.dockCenter.x)<.0001f&&std::abs(electroEnd.center.y-test.dockCenter.y)<.0001f&&std::abs(electroEnd.radius-test.dockRadius)<.0001f;
     }
     const float eps=.0001f;
     ok&=std::abs(S(eps,0,1)/eps)<.001f;

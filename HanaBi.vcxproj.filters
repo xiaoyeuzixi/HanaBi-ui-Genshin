@@ -21,8 +21,11 @@
     <ClCompile Include="src\ui\paint.cpp"><Filter>界面</Filter></ClCompile>
     <ClCompile Include="src\ui\widgets.cpp"><Filter>界面</Filter></ClCompile>
     <ClCompile Include="src\intro\intro.cpp"><Filter>开场动画</Filter></ClCompile>
+    <ClCompile Include="src\intro\electro.cpp"><Filter>开场动画</Filter></ClCompile>
+    <ClCompile Include="src\intro\electro_material.cpp"><Filter>开场动画</Filter></ClCompile>
     <ClCompile Include="src\intro\crystal_material.cpp"><Filter>开场动画</Filter></ClCompile>
     <ClCompile Include="src\gfx\background.cpp"><Filter>渲染</Filter></ClCompile>
+    <ClCompile Include="src\gfx\character.cpp"><Filter>渲染</Filter></ClCompile>
     <ClCompile Include="src\gfx\texture.cpp"><Filter>渲染</Filter></ClCompile>
     <ClCompile Include="src\assets\embedded.cpp"><Filter>资源</Filter></ClCompile>
     <ClCompile Include="src\assets\fonts.cpp"><Filter>资源</Filter></ClCompile>
@@ -36,16 +39,20 @@
   <ItemGroup>
     <ClInclude Include="src\ui\shell.h"><Filter>界面</Filter></ClInclude>
     <ClInclude Include="src\ui\theme.h"><Filter>界面</Filter></ClInclude>
+    <ClInclude Include="src\intro\electro_material.h"><Filter>开场动画</Filter></ClInclude>
+    <ClInclude Include="src\intro\electro_geometry.h"><Filter>开场动画</Filter></ClInclude>
     <ClInclude Include="src\ui\paint.h"><Filter>界面</Filter></ClInclude>
     <ClInclude Include="src\ui\widgets.h"><Filter>界面</Filter></ClInclude>
     <ClInclude Include="src\ui\ui_ctx.h"><Filter>界面</Filter></ClInclude>
     <ClInclude Include="src\intro\intro.h"><Filter>开场动画</Filter></ClInclude>
     <ClInclude Include="src\intro\crystal_material.h"><Filter>开场动画</Filter></ClInclude>
     <ClInclude Include="src\gfx\background.h"><Filter>渲染</Filter></ClInclude>
+    <ClInclude Include="src\gfx\character.h"><Filter>渲染</Filter></ClInclude>
     <ClInclude Include="src\gfx\texture.h"><Filter>渲染</Filter></ClInclude>
     <ClInclude Include="src\gfx\color.h"><Filter>渲染</Filter></ClInclude>
     <ClInclude Include="src\gfx\window_motion.h"><Filter>渲染</Filter></ClInclude>
     <ClInclude Include="src\core\display.h"><Filter>基础</Filter></ClInclude>
+    <ClInclude Include="src\core\preferences.h"><Filter>基础</Filter></ClInclude>
     <ClInclude Include="src\core\easing.h"><Filter>基础</Filter></ClInclude>
     <ClInclude Include="src\core\spring.h"><Filter>基础</Filter></ClInclude>
     <ClInclude Include="src\core\time.h"><Filter>基础</Filter></ClInclude>
@@ -79,6 +86,9 @@
     <None Include="assets\tex\ganyu-wave-b.png"><Filter>资源\贴图</Filter></None>
     <None Include="assets\tex\ganyu-overlay-alpha.png"><Filter>资源\贴图</Filter></None>
     <None Include="assets\tex\target-figure.png"><Filter>资源\贴图</Filter></None>
+    <None Include="assets\tex\yae-bg-4k.jpg"><Filter>资源\贴图</Filter></None>
+    <None Include="assets\tex\yae-character.hbc"><Filter>资源\贴图</Filter></None>
+    <None Include="assets\tex\ganyu-overlay.jpg"><Filter>资源\贴图</Filter></None>
     <None Include="third_party\imgui\LICENSE.txt"><Filter>第三方\ImGui</Filter></None>
   </ItemGroup>
 </Project>
